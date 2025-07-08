@@ -1,0 +1,155 @@
+==========================================
+🧪 PRUEBAS DE FUNCIONAMIENTO - SIN DOCKER
+==========================================
+
+📋 VERIFICACIÓN PASO A PASO
+==========================================
+
+ESTADO ACTUAL:
+✅ Frontend ejecutándose en http://localhost:3000
+✅ Backend con estructura completa
+✅ Base de datos configurada
+
+==========================================
+🔥 OPCIÓN 1: PRUEBA RÁPIDA (SOLO FRONTEND)
+==========================================
+
+Como el backend necesita configuración adicional, puedes probar el frontend inmediatamente:
+
+1. Abrir navegador en: http://localhost:3000
+2. Ver la página principal del dashboard
+3. Ir a /auth/login para ver el formulario de login
+4. Ir a /auth/register para ver el formulario de registro
+
+NOTA: El login no funcionará completamente sin backend, pero la UI está funcional.
+
+==========================================
+🚀 OPCIÓN 2: PRUEBA COMPLETA (FRONTEND + BACKEND)
+==========================================
+
+### PASO 1: Configurar Variables de Entorno
+Crear archivo .env en la raíz del proyecto:
+
+# Mínimo requerido para pruebas
+OPENAI_API_KEY=tu-key-de-openai-aqui
+DATABASE_URL=postgresql://icfes_user:icfes_password@localhost:5432/icfes_ai
+SECRET_KEY=mi-clave-super-secreta-para-pruebas-locales-123
+
+### PASO 2: Configurar Base de Datos (SIN DOCKER)
+
+Opción A - PostgreSQL Local:
+1. Descargar PostgreSQL de https://www.postgresql.org/
+2. Instalar con usuario: icfes_user, password: icfes_password
+3. Crear base de datos: icfes_ai
+
+Opción B - Base de Datos en la Nube (RECOMENDADO):
+1. Crear cuenta gratuita en:
+   - Neon.tech: https://neon.tech/ (PostgreSQL gratis)
+   - Supabase: https://supabase.com/ (PostgreSQL gratis)
+   - ElephantSQL: https://www.elephantsql.com/ (PostgreSQL gratis)
+
+2. Obtener la URL de conexión (ej: postgresql://user:pass@host:5432/db)
+3. Usar esa URL en DATABASE_URL del .env
+
+### PASO 3: Ejecutar Backend
+Abrir nueva terminal en la raíz del proyecto:
+
+cd backend
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Mac/Linux:
+source venv/bin/activate
+
+pip install -r requirements.txt
+python main.py
+
+### PASO 4: Verificar Funcionamiento
+
+1. Backend: http://localhost:8000/docs (documentación API)
+2. Frontend: http://localhost:3000 (aplicación web)
+
+==========================================
+🧪 PRUEBAS ESPECÍFICAS
+==========================================
+
+### Prueba 1: API Health Check
+Abrir: http://localhost:8000/health
+Esperado: {"status": "healthy", "version": "1.0.0"}
+
+### Prueba 2: Documentación API
+Abrir: http://localhost:8000/docs
+Esperado: Interfaz Swagger con todos los endpoints
+
+### Prueba 3: Frontend Dashboard
+Abrir: http://localhost:3000
+Esperado: Dashboard con áreas ICFES (matemáticas, lectura, etc.)
+
+### Prueba 4: Páginas de Autenticación
+- Login: http://localhost:3000/auth/login
+- Registro: http://localhost:3000/auth/register
+Esperado: Formularios funcionales con validación
+
+### Prueba 5: Conexión Frontend-Backend
+1. Ir a login en frontend
+2. Usar credenciales de prueba: admin@icfes.com / admin123
+3. Verificar si se puede hacer login
+
+==========================================
+🔧 SOLUCIÓN RÁPIDA SIN BD COMPLETA
+==========================================
+
+Si quieres probar SIN configurar base de datos:
+
+1. Comentar líneas de base de datos en backend/main.py
+2. Crear endpoints mock para testing
+3. El frontend seguirá funcionando visualmente
+
+### Modificación en backend/main.py:
+```python
+# Comentar estas líneas temporalmente:
+# from app.core.database import init_db
+# await init_db()
+```
+
+==========================================
+📱 DEMO MÍNIMO FUNCIONAL
+==========================================
+
+FRONTEND YA FUNCIONA 100%:
+- ✅ Navegación entre páginas
+- ✅ Formularios con validación
+- ✅ UI responsive y moderna
+- ✅ Sistema de temas
+- ✅ Animaciones y efectos
+
+LO QUE FALTA PARA MVP COMPLETO:
+- ⚠️ Conexión a base de datos real
+- ⚠️ API key de OpenAI configurada
+- ⚠️ Endpoints de backend funcionando
+
+==========================================
+🎯 RECOMENDACIÓN PARA PRUEBA INMEDIATA
+==========================================
+
+1. Mantén el frontend corriendo: npm run dev
+2. Abre http://localhost:3000 en tu navegador
+3. Explora las páginas:
+   - Dashboard principal
+   - Login (/auth/login)
+   - Registro (/auth/register)
+4. Prueba los formularios y navegación
+5. Verifica que la UI sea responsive
+
+RESULTADO: Tendrás una demo visual completa del sistema, 
+solo faltaría la funcionalidad backend para el MVP completo.
+
+==========================================
+🚀 SIGUIENTE PASO SUGERIDO
+==========================================
+
+¿Quieres que:
+A) Configure un backend mock para demo completa?
+B) Te ayude a configurar una base de datos gratuita en la nube?
+C) Creemos un demo standalone solo frontend?
+D) Simplifiquemos el backend para pruebas locales? 

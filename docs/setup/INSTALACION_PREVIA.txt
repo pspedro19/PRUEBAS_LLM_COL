@@ -1,0 +1,213 @@
+==========================================
+ICFES AI TUTOR - INSTALACIÓN PREVIA
+==========================================
+
+📋 REQUISITOS PREVIOS
+==========================================
+
+1. Node.js (versión 18.17.0 o superior)
+   - Descargar de: https://nodejs.org/
+   - Verificar instalación: node --version
+   - Verificar npm: npm --version
+
+2. Python (versión 3.11 o superior)
+   - Descargar de: https://python.org/
+   - Verificar instalación: python --version
+   - Instalar pip: incluido con Python
+
+3. PostgreSQL (versión 15 o superior)
+   - Descargar de: https://www.postgresql.org/
+   - O usar Docker (recomendado para desarrollo)
+
+4. Git
+   - Descargar de: https://git-scm.com/
+   - Verificar instalación: git --version
+
+5. Visual Studio Code (recomendado)
+   - Descargar de: https://code.visualstudio.com/
+
+==========================================
+🔧 HERRAMIENTAS ADICIONALES
+==========================================
+
+1. Docker Desktop (OPCIONAL - para desarrollo con contenedores)
+   - Descargar de: https://www.docker.com/products/docker-desktop/
+   - Verificar: docker --version
+
+2. Redis (para cache - OPCIONAL para MVP)
+   - Windows: usar Docker o Redis for Windows
+   - O usar servicio en la nube
+
+==========================================
+🔑 CONFIGURACIÓN DE APIS
+==========================================
+
+1. OpenAI API Key (REQUERIDO)
+   - Crear cuenta en: https://platform.openai.com/
+   - Generar API key en: https://platform.openai.com/api-keys
+   - Tener créditos disponibles (mínimo $5 USD recomendado)
+
+2. Google OAuth (OPCIONAL para login con Google)
+   - Ir a: https://console.cloud.google.com/
+   - Crear proyecto nuevo
+   - Habilitar Google+ API
+   - Crear credenciales OAuth 2.0
+   - Configurar URLs autorizadas:
+     * http://localhost:3000
+     * http://localhost:3000/auth/callback/google
+
+==========================================
+📦 INSTALACIÓN DE DEPENDENCIAS
+==========================================
+
+### Frontend (Next.js)
+cd frontend
+npm install
+
+### Backend (Python FastAPI)
+cd backend
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# MacOS/Linux:
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+==========================================
+🗄️ BASE DE DATOS
+==========================================
+
+### Opción 1: PostgreSQL Local
+1. Instalar PostgreSQL
+2. Crear base de datos: icfes_ai
+3. Crear usuario: icfes_user
+4. Configurar contraseña: icfes_password
+
+### Opción 2: Docker (Recomendado)
+docker run --name icfes-postgres \
+  -e POSTGRES_USER=icfes_user \
+  -e POSTGRES_PASSWORD=icfes_password \
+  -e POSTGRES_DB=icfes_ai \
+  -p 5432:5432 \
+  -d postgres:15
+
+==========================================
+🌐 VARIABLES DE ENTORNO
+==========================================
+
+Crear archivo .env en la raíz del proyecto:
+
+# OpenAI
+OPENAI_API_KEY=tu_openai_api_key_aqui
+
+# Base de datos
+DATABASE_URL=postgresql://icfes_user:icfes_password@localhost:5432/icfes_ai
+
+# JWT
+SECRET_KEY=tu_clave_secreta_muy_larga_y_segura_aqui
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Google OAuth (opcional)
+GOOGLE_CLIENT_ID=tu_google_client_id_aqui
+GOOGLE_CLIENT_SECRET=tu_google_client_secret_aqui
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=tu_google_client_id_aqui
+
+==========================================
+🚀 COMANDOS DE EJECUCIÓN
+==========================================
+
+### Desarrollo con Docker (Recomendado)
+docker-compose up -d
+
+### Desarrollo manual
+
+# Terminal 1 - Backend
+cd backend
+source venv/bin/activate  # o venv\Scripts\activate en Windows
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+
+# Terminal 3 - Base de datos (si no usas Docker)
+# PostgreSQL debe estar ejecutándose
+
+==========================================
+🔍 VERIFICACIÓN DE INSTALACIÓN
+==========================================
+
+1. Verificar Node.js: node --version (debe ser >= 18.17.0)
+2. Verificar Python: python --version (debe ser >= 3.11)
+3. Verificar PostgreSQL: psql --version
+4. Verificar Docker: docker --version (opcional)
+5. Verificar Git: git --version
+
+==========================================
+📱 ACCESO A LA APLICACIÓN
+==========================================
+
+Una vez todo esté ejecutándose:
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- Documentación API: http://localhost:8000/docs
+- Base de datos: localhost:5432
+
+Credenciales de prueba:
+- Admin: admin@icfes.com / admin123
+- Estudiante: estudiante@ejemplo.com / user123
+
+==========================================
+🐛 SOLUCIÓN DE PROBLEMAS COMUNES
+==========================================
+
+1. Error "node no se reconoce":
+   - Reiniciar terminal después de instalar Node.js
+   - Verificar que Node.js esté en PATH
+
+2. Error "python no se reconoce":
+   - Asegurar que Python esté marcado "Add to PATH" en instalación
+   - Reiniciar terminal
+
+3. Error de conexión a base de datos:
+   - Verificar que PostgreSQL esté ejecutándose
+   - Verificar credenciales en .env
+   - Verificar puerto 5432 disponible
+
+4. Error de permisos en PowerShell:
+   - Ejecutar: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+5. Error "MODULE_NOT_FOUND":
+   - Ejecutar npm install en frontend/
+   - Ejecutar pip install -r requirements.txt en backend/
+
+==========================================
+📚 RECURSOS ADICIONALES
+==========================================
+
+- Documentación Next.js: https://nextjs.org/docs
+- Documentación FastAPI: https://fastapi.tiangolo.com/
+- Documentación PostgreSQL: https://www.postgresql.org/docs/
+- Documentación Docker: https://docs.docker.com/
+
+==========================================
+✅ CHECKLIST FINAL
+==========================================
+
+[ ] Node.js instalado y funcionando
+[ ] Python instalado y funcionando
+[ ] PostgreSQL instalado/configurado
+[ ] OpenAI API Key obtenida
+[ ] Variables de entorno configuradas
+[ ] Dependencias de frontend instaladas
+[ ] Dependencias de backend instaladas
+[ ] Base de datos creada y ejecutándose
+[ ] Frontend ejecutándose en puerto 3000
+[ ] Backend ejecutándose en puerto 8000
+
+¡Una vez completado este checklist, el proyecto estará listo para usar! 

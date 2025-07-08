@@ -1,0 +1,71 @@
+# ==========================================
+# ICFES AI TUTOR - VARIABLES DE ENTORNO
+# ==========================================
+# Crea un archivo .env en la raíz del proyecto con estas variables:
+
+# ==========================================
+# OPENAI API (REQUERIDO)
+# ==========================================
+OPENAI_API_KEY=sk-fake-key-for-testing
+OPENAI_MODEL=gpt-4
+OPENAI_MAX_TOKENS=2000
+
+# ==========================================
+# BASE DE DATOS (POSTGRESQL)
+# ==========================================
+DATABASE_URL=sqlite:///./test.db
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=icfes_user
+DB_PASSWORD=icfes_password
+DB_NAME=icfes_ai
+
+# ==========================================
+# JWT Y SEGURIDAD
+# ==========================================
+SECRET_KEY=mi-clave-super-secreta-para-pruebas-locales-123456789
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# ==========================================
+# GOOGLE OAUTH (OPCIONAL)
+# ==========================================
+GOOGLE_CLIENT_ID=your-google-client-id.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# ==========================================
+# FRONTEND (NEXT.JS)
+# ==========================================
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id.googleusercontent.com
+
+# ==========================================
+# CONFIGURACIÓN DEL SERVIDOR
+# ==========================================
+API_V1_STR=/api/v1
+PROJECT_NAME=ICFES AI Tutor
+CORS_ORIGINS=["http://localhost:3000","https://localhost:3000"]
+ENVIRONMENT=development
+DEBUG=true 
+
+# ==========================================
+# INSTRUCCIONES:
+# ==========================================
+
+1. Crea un archivo nuevo llamado ".env" (sin extensión) en la carpeta raíz del proyecto
+2. Copia y pega exactamente el contenido de arriba
+3. Guarda el archivo
+
+NOTA: Para OpenAI real, reemplaza "sk-fake-key-for-testing" con tu API key real de OpenAI
+
+# ==========================================
+# ESTRUCTURA DE ARCHIVOS ESPERADA:
+# ==========================================
+
+Icfes_Pipeline/
+├── .env                    ← CREAR ESTE ARCHIVO
+├── frontend/
+├── backend/
+├── database/
+└── scripts/ 
