@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -28,8 +27,8 @@ class UserSession(Base):
     """User login sessions for authentication and tracking"""
     __tablename__ = "user_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     
     # Session identification
     session_token = Column(String(255), unique=True, nullable=False, index=True)
@@ -95,9 +94,9 @@ class StudySession(Base):
     """Individual study sessions with questions and progress tracking"""
     __tablename__ = "study_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    user_session_id = Column(UUID(as_uuid=True), ForeignKey("user_sessions.id"), nullable=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_session_id = Column(String(36), ForeignKey("user_sessions.id"), nullable=True)
     
     # Session configuration
     session_type = Column(String(20), default=SessionType.PRACTICE.value, index=True)

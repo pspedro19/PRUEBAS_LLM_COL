@@ -48,14 +48,11 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const success = await register(formData.email, formData.password, formData.fullName)
-      if (success) {
-        router.push('/')
-      } else {
-        setError('Error al crear la cuenta. El email podría estar en uso.')
-      }
-    } catch (err) {
-      setError('Error al crear la cuenta. Intenta nuevamente.')
+      await register(formData.email, formData.password, formData.fullName)
+      // Si llegamos aquí, el registro fue exitoso
+      router.push('/')
+    } catch (err: any) {
+      setError(err.message || 'Error al crear la cuenta. Intenta nuevamente.')
     } finally {
       setIsLoading(false)
     }

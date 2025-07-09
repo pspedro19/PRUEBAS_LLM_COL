@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -20,8 +19,8 @@ class ChainOfThoughtStep(Base):
     """Individual steps in the chain of thought reasoning process"""
     __tablename__ = "chain_of_thought_steps"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_response_id = Column(UUID(as_uuid=True), ForeignKey("user_responses.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_response_id = Column(String(36), ForeignKey("user_responses.id"), nullable=False)
     
     # Step information
     step_number = Column(Integer, nullable=False)  # 1, 2, 3, etc.
@@ -62,12 +61,12 @@ class UserResponse(Base):
     """User responses to questions with full context and analysis"""
     __tablename__ = "user_responses"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     
     # Core response data
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False, index=True)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("study_sessions.id"), nullable=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(String(36), ForeignKey("questions.id"), nullable=False, index=True)
+    session_id = Column(String(36), ForeignKey("study_sessions.id"), nullable=True, index=True)
     
     # Response details
     selected_answer = Column(String(10), nullable=False)  # "A", "B", "C", "D"

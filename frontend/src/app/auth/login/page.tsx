@@ -24,14 +24,11 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const success = await login(email, password)
-      if (success) {
-        router.push('/')
-      } else {
-        setError('Email o contraseña incorrectos')
-      }
-    } catch (err) {
-      setError('Error al iniciar sesión. Intenta nuevamente.')
+      await login(email, password)
+      // Si llegamos aquí, el login fue exitoso
+      router.push('/')
+    } catch (err: any) {
+      setError(err.message || 'Error al iniciar sesión. Intenta nuevamente.')
     } finally {
       setIsLoading(false)
     }

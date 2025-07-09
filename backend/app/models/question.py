@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -41,7 +40,7 @@ class QuestionStatus(str, Enum):
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     
     # Basic Question Information
     question_text = Column(Text, nullable=False)
@@ -81,8 +80,8 @@ class Question(Base):
     
     # Status and Review
     status = Column(String(20), default=QuestionStatus.ACTIVE.value)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     
     # Statistics
     times_answered = Column(Integer, default=0)
@@ -126,8 +125,8 @@ class Question(Base):
 class IRTParameters(Base):
     __tablename__ = "irt_parameters"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), unique=True, nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    question_id = Column(String(36), ForeignKey("questions.id"), unique=True, nullable=False)
     
     # IRT Model Parameters (3PL Model)
     discrimination_a = Column(Float, default=1.0)  # How well the item discriminates between abilities
@@ -222,7 +221,7 @@ class IRTParameters(Base):
 class QuestionArea(Base):
     __tablename__ = "question_areas"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(50), unique=True, nullable=False)  # "matematicas", "lectura_critica", etc.
     display_name = Column(String(100), nullable=False)  # "Matemáticas", "Lectura Crítica", etc.
     description = Column(Text, nullable=True)
@@ -262,9 +261,9 @@ class QuestionResponse(Base):
     """Historical responses to questions for analysis and improvement"""
     __tablename__ = "question_responses"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    question_id = Column(String(36), ForeignKey("questions.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     
     # Response data
     selected_answer = Column(String(10), nullable=False)
@@ -277,7 +276,7 @@ class QuestionResponse(Base):
     confidence_level = Column(Float, nullable=True)  # 0-1 scale
     
     # Context
-    session_id = Column(UUID(as_uuid=True), ForeignKey("study_sessions.id"), nullable=True)
+    session_id = Column(String(36), ForeignKey("study_sessions.id"), nullable=True)
     device_type = Column(String(20), nullable=True)  # "mobile", "tablet", "desktop"
     
     # Timestamps
