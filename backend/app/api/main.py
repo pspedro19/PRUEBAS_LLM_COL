@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import auth, questions, users, chain_of_thought, analytics
+from app.api.endpoints import auth, questions, users, responses
 from app.core.config import settings
 from app.core.init_db import init_db
 from app.core.database import init_models, get_db
@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
+    title="ICFES QUEST - Epic Learning Platform",
+    version="1.0.0",
+    description="Plataforma épica de aprendizaje para el ICFES con sistema de leveling y recompensas",
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
@@ -54,15 +55,9 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    chain_of_thought.router,
-    prefix="/chain-of-thought",
-    tags=["chain-of-thought"]
-)
-
-api_router.include_router(
-    analytics.router,
-    prefix="/analytics",
-    tags=["analytics"]
+    responses.router,
+    prefix="/responses",
+    tags=["responses"]
 )
 
 # Include API router in main app
@@ -82,4 +77,15 @@ async def startup_event():
             break
         logger.info("Test data initialized")
     except Exception as e:
-        logger.error(f"Error during startup: {e}") 
+        logger.error(f"Error during startup: {e}")
+
+@app.get("/")
+async def root():
+    """Root endpoint with epic welcome message"""
+    return {
+        "message": "🎮 ¡Bienvenido a ICFES QUEST! 🎮",
+        "description": "La plataforma épica de aprendizaje para conquistar el ICFES",
+        "version": "1.0.0",
+        "status": "online",
+        "docs": "/docs"
+    } 

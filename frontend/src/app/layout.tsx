@@ -6,23 +6,8 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ICFES AI Tutor - Preparación Inteligente',
-  description: 'Plataforma de preparación para el ICFES con IA explicativa y evaluación adaptativa usando Item Response Theory',
-  keywords: 'ICFES, preparación, inteligencia artificial, educación, Colombia, examen de estado',
-  authors: [{ name: 'ICFES AI Team' }],
-  creator: 'ICFES AI Tutor',
-  publisher: 'ICFES AI',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
-  },
-  manifest: '/site.webmanifest',
+  title: 'MathQuest - Solo Leveling Edition',
+  description: 'Epic math battles in the world of Solo Leveling',
 }
 
 export default function RootLayout({
@@ -31,10 +16,27 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-abyss text-neonSystem font-epicUI min-h-screen gradient-hero`}>
         <Providers>
-          {children}
+          <div className="relative z-10">
+            {children}
+          </div>
+          
+          {/* Epic Background Effects */}
+          <div className="fixed inset-0 z-0">
+            {/* Mana Particles */}
+            <div className="absolute top-1/4 left-1/4 w-2 h-2 mana-particles rounded-full"></div>
+            <div className="absolute top-1/3 right-1/3 w-1 h-1 mana-particles rounded-full"></div>
+            <div className="absolute bottom-1/4 left-1/3 w-3 h-3 mana-particles rounded-full"></div>
+            <div className="absolute top-2/3 right-1/4 w-2 h-2 mana-particles rounded-full"></div>
+            
+            {/* Shadow Effects */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-20">
+              <div className="absolute top-1/4 left-1/4 w-64 h-64 shadow-effect rounded-full"></div>
+              <div className="absolute bottom-1/4 right-1/4 w-48 h-48 shadow-effect rounded-full"></div>
+            </div>
+          </div>
         </Providers>
       </body>
     </html>

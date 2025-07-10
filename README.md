@@ -1,280 +1,160 @@
-# 🎓 ICFES AI Tutor
+# MathQuest - Solo Leveling Edition 🎮📚
 
-**Sistema de Tutoría Inteligente para Pruebas ICFES Saber 11**
+Una plataforma educativa inmersiva que fusiona la preparación para el ICFES con la narrativa épica de "Solo Leveling". Domina las matemáticas a través de batallas épicas, sistemas de nivelación y un árbol de talentos único.
 
-Una aplicación web completa que utiliza inteligencia artificial para proporcionar tutorías personalizadas y análisis avanzado basado en la Teoría de Respuesta al Ítem (IRT) para estudiantes que se preparan para las pruebas ICFES.
+## ✨ Características Principales
 
-## 🌟 Características Principales
+### 🎯 **Diseño Visual Mejorado**
+- **Tipografía Dual**: Cinzel para títulos épicos, Inter para legibilidad
+- **Paleta de Colores Optimizada**: Azul cian para marca, grises para texto, acentos dorados
+- **Efectos Visuales Moderados**: Neon-glow equilibrado sin sacrificar contraste
+- **Navegación Responsiva**: Sticky navbar en desktop, bottom nav en móvil
 
-- **🤖 Tutor AI Inteligente**: Utiliza modelos de lenguaje avanzados para generar explicaciones personalizadas
-- **📊 Análisis IRT**: Evaluación psicométrica avanzada del nivel de habilidad del estudiante
-- **🎯 Recomendaciones Adaptativas**: Preguntas y temas sugeridos basados en el rendimiento individual
-- **📈 Dashboard de Progreso**: Seguimiento detallado del avance académico
-- **🔐 Sistema de Autenticación**: Gestión de usuarios con roles (estudiantes, tutores, administradores)
-- **💾 Base de Datos SQLite**: Configuración simple y portable
-- **🔄 API RESTful**: Backend modular con FastAPI
-- **⚡ Frontend Moderno**: Interfaz responsiva con Next.js y Tailwind CSS
+### 🏗️ **Arquitectura de Información**
+- **Hero Section Mejorado**: Sub-headline claro + teaser interactivo
+- **Panel de Estadísticas Avanzado**: Barras de progreso circulares con tooltips
+- **Jerarquía Visual Clara**: Información organizada por importancia
 
-## 🛠️ Tecnologías Utilizadas
+### ⚔️ **Sistema de Gamificación**
+- **Árbol de Talentos**: Habilidades matemáticas como nodos desbloqueables
+- **Misiones Diarias**: Recompensas variables para inducir hábito
+- **Sistema de Ranking**: Tablas responsivas con filtros (global, amigos, colegio)
+- **Logros Sociales**: Compartir progreso en redes sociales
 
-### Backend
-- **FastAPI** - Framework web moderno y rápido para Python
-- **SQLAlchemy** - ORM para gestión de base de datos
-- **SQLite** - Base de datos embebida
-- **OpenAI/LangChain** - Integración con modelos de IA
-- **NumPy/SciPy** - Computación científica para análisis IRT
-- **Pandas** - Manipulación y análisis de datos
-- **Pydantic** - Validación de datos y configuración
-- **python-jose** - Manejo de tokens JWT
-- **passlib** - Hashing seguro de contraseñas
+### 📊 **Componentes Nuevos**
+- `EpicStatsPanel`: Estadísticas con barras circulares y microinteracciones
+- `SkillTree`: Árbol de talentos con conexiones visuales
+- `EpicRanking`: Ranking con filtros y funcionalidad social
+- Páginas especializadas: `/practice`, `/dashboard`
 
-### Frontend
-- **Next.js 14** - Framework de React para producción
-- **React 18** - Biblioteca para interfaces de usuario
-- **Tailwind CSS** - Framework de CSS utilitario
-- **TypeScript** - Tipado estático para JavaScript
+## 🚀 Tecnologías
 
-## 🚀 Instalación Rápida
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
+- **Backend**: FastAPI, Python, PostgreSQL
+- **Diseño**: Componentes modulares, CSS Grid, Flexbox
+- **Accesibilidad**: WCAG AA, lectores de pantalla, modo alto contraste
 
-### Prerrequisitos
-- **Python 3.8+** ([Descargar](https://www.python.org/downloads/))
-- **Node.js 18+** ([Descargar](https://nodejs.org/))
-- **Git** ([Descargar](https://git-scm.com/))
+## 🎨 Mejoras de UX Implementadas
 
-### Opción 1: Instalación Automática (Recomendada)
+### 1. **Legibilidad y Accesibilidad**
+- Contraste mejorado (WCAG AA 4.5:1)
+- Soporte para `prefers-reduced-motion`
+- Etiquetas ARIA para lectores de pantalla
+- Indicadores de foco visibles
 
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/tu-usuario/icfes-ai-tutor.git
-cd icfes-ai-tutor
+### 2. **Interactividad**
+- Hover states informativos
+- Tooltips contextuales
+- Animaciones suaves y responsivas
+- Microinteracciones para feedback
 
-# 2. Ejecutar instalación automática
-python setup.py
-```
+### 3. **Gamificación Educativa**
+- Progreso visual claro
+- Recompensas inmediatas
+- Sistema de rachas
+- Logros desbloqueables
 
-### Opción 2: Instalación Manual
-
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/tu-usuario/icfes-ai-tutor.git
-cd icfes-ai-tutor
-
-# 2. Crear entorno virtual de Python
-python -m venv venv-all
-# En Windows:
-venv-all\Scripts\activate
-# En Linux/Mac:
-source venv-all/bin/activate
-
-# 3. Instalar dependencias de Python
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# 4. Instalar dependencias del frontend
-cd frontend
-npm install
-cd ..
-
-# 5. Configurar variables de entorno
-# Copiar y editar los archivos .env de ejemplo
-cp backend/.env.example backend/.env
-cp frontend/.env.local.example frontend/.env.local
-
-# 6. Inicializar base de datos
-cd backend
-python app/core/init_db.py
-cd ..
-```
-
-## 🎮 Uso
-
-### Iniciar la Aplicación
-
-**Automático (Windows):**
-```bash
-# Terminal 1 - Backend
-start_backend.bat
-
-# Terminal 2 - Frontend  
-start_frontend.bat
-```
-
-**Automático (Linux/Mac):**
-```bash
-# Terminal 1 - Backend
-./start_backend.sh
-
-# Terminal 2 - Frontend
-./start_frontend.sh
-```
-
-**Manual:**
-```bash
-# Terminal 1 - Backend
-cd backend
-source ../venv-all/bin/activate  # Linux/Mac
-# o venv-all\Scripts\activate  # Windows
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-
-# Terminal 2 - Frontend
-cd frontend
-npm run dev
-```
-
-### Acceder a la Aplicación
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://127.0.0.1:8000
-- **Documentación API**: http://127.0.0.1:8000/docs
-
-### Credenciales de Prueba
-
-**Administrador:**
-- Email: `admin@icfes.com`
-- Contraseña: `admin123`
-
-**Estudiante:**
-- Email: `estudiante@ejemplo.com`
-- Contraseña: `user123`
+### 4. **Responsividad**
+- Diseño mobile-first
+- Navegación adaptativa
+- Tablas responsivas
+- Componentes flexibles
 
 ## 📁 Estructura del Proyecto
 
 ```
-icfes-ai-tutor/
-├── backend/                    # Servidor FastAPI
+frontend/
+├── src/
 │   ├── app/
-│   │   ├── api/               # Endpoints de la API
-│   │   ├── core/              # Configuración y seguridad
-│   │   ├── models/            # Modelos de base de datos
-│   │   ├── schemas/           # Esquemas Pydantic
-│   │   └── services/          # Lógica de negocio
-│   ├── .env                   # Variables de entorno del backend
-│   └── requirements.txt       # Dependencias de Python
-├── frontend/                  # Aplicación Next.js
-│   ├── src/
-│   │   ├── app/              # Páginas y layouts
-│   │   └── components/       # Componentes reutilizables
-│   ├── .env.local            # Variables de entorno del frontend
-│   └── package.json          # Dependencias de Node.js
-├── docs/                     # Documentación del proyecto
-├── scripts/                  # Scripts de utilidad
-├── setup.py                  # Script de instalación automática
-├── requirements.txt          # Dependencias principales
-└── README.md                 # Este archivo
+│   │   ├── page.tsx              # Página principal mejorada
+│   │   ├── practice/page.tsx     # Árbol de talentos y misiones
+│   │   ├── dashboard/page.tsx    # Perfil y analíticas
+│   │   └── globals.css           # Estilos mejorados
+│   ├── components/
+│   │   ├── EpicStatsPanel.tsx    # Estadísticas circulares
+│   │   ├── SkillTree.tsx         # Árbol de talentos
+│   │   ├── EpicRanking.tsx       # Ranking con filtros
+│   │   └── EpicNavigation.tsx    # Navegación mejorada
+│   └── lib/
+└── tailwind.config.js            # Configuración extendida
 ```
 
-## ⚙️ Configuración
+## 🎯 Métricas de Éxito
 
-### Variables de Entorno del Backend (`backend/.env`)
+- **TTST (Time to Solve First Task)**: < 30 segundos
+- **NPS (Net Promoter Score)**: Objetivo > 50
+- **Retención**: 7 días consecutivos
+- **Accesibilidad**: WCAG AA compliance
 
-```env
-# Base de datos
-DATABASE_URL=sqlite:///./icfes_tutor.db
-
-# Seguridad
-SECRET_KEY=your-super-secret-key-change-this-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# CORS
-CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
-
-# OpenAI (opcional)
-OPENAI_API_KEY=your-openai-api-key-here
-
-# Entorno
-ENVIRONMENT=development
-```
-
-### Variables de Entorno del Frontend (`frontend/.env.local`)
-
-```env
-# API del backend
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-
-# Google OAuth (opcional)
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
-```
-
-## 📊 Funcionalidades Principales
-
-### 1. Sistema de Autenticación
-- Registro e inicio de sesión de usuarios
-- Gestión de roles (estudiante, tutor, administrador)
-- Tokens JWT para seguridad de sesiones
-
-### 2. Evaluación Adaptativa
-- Banco de preguntas categorizadas por área y dificultad
-- Algoritmo IRT para selección de preguntas
-- Estimación del nivel de habilidad θ (theta)
-
-### 3. Tutor AI
-- Explicaciones personalizadas generadas por IA
-- Estrategias de resolución paso a paso
-- Recomendaciones de estudio adaptativas
-
-### 4. Analytics y Reportes
-- Dashboard de progreso individual
-- Análisis de fortalezas y debilidades
-- Reportes de rendimiento por área
-
-## 🔧 Desarrollo
-
-### Comandos Útiles
+## 🔧 Instalación
 
 ```bash
-# Ejecutar tests del backend
-cd backend
-python -m pytest
+# Clonar repositorio
+git clone [url-del-repositorio]
 
-# Linting y formato del código Python
-black .
-flake8 .
-isort .
-
-# Linting del frontend
+# Instalar dependencias frontend
 cd frontend
-npm run lint
-npm run format
+npm install
 
-# Build de producción del frontend
-npm run build
+# Configurar variables de entorno
+cp .env.example .env.local
+
+# Ejecutar en desarrollo
+npm run dev
 ```
 
-### Estructura de la Base de Datos
+## 🎮 Uso
 
-El sistema utiliza SQLite con las siguientes tablas principales:
-- `users` - Información de usuarios
-- `questions` - Banco de preguntas
-- `responses` - Respuestas de estudiantes
-- `sessions` - Sesiones de estudio
-- `analytics` - Datos de análisis IRT
+1. **Registro/Login**: Accede con tu cuenta
+2. **Explorar Habilidades**: Visita el árbol de talentos
+3. **Completar Misiones**: Gana XP y recompensas
+4. **Competir**: Sube en el ranking global
+5. **Compartir**: Muestra tu progreso en redes
 
-## 🤝 Contribuir
+## 🎨 Personalización
+
+### Colores
+```css
+--neonSystem: #00D9FF;    /* Color principal */
+--levelUp: #FFD700;       /* Acentos dorados */
+--brightPurple: #9333EA;  /* Púrpura monarca */
+--neonGreen: #39FF14;     /* Verde éxito */
+```
+
+### Tipografías
+```css
+font-epicTitle: Cinzel    /* Títulos épicos */
+font-body: Inter          /* Texto legible */
+font-display: Orbitron    /* Elementos UI */
+```
+
+## 📈 Roadmap
+
+- [ ] **Sistema de Clanes**: Cooperación entre estudiantes
+- [ ] **Eventos Temporales**: Competencias especiales
+- [ ] **Analíticas Avanzadas**: Machine Learning para personalización
+- [ ] **Modo Offline**: Sincronización con IndexedDB
+- [ ] **Integración ICFES**: Contenido oficial actualizado
+
+## 🤝 Contribución
 
 1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
+5. Abre un Pull Request
 
-## 📝 Licencia
+## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 📞 Soporte
-
-- **Documentación**: [Wiki del proyecto](https://github.com/tu-usuario/icfes-ai-tutor/wiki)
-- **Issues**: [GitHub Issues](https://github.com/tu-usuario/icfes-ai-tutor/issues)
-- **Discusiones**: [GitHub Discussions](https://github.com/tu-usuario/icfes-ai-tutor/discussions)
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ## 🙏 Agradecimientos
 
-- [ICFES](https://www.icfes.gov.co/) por las especificaciones de las pruebas
-- [OpenAI](https://openai.com/) por los modelos de lenguaje
-- [FastAPI](https://fastapi.tiangolo.com/) por el excelente framework
-- [Next.js](https://nextjs.org/) por el framework de frontend
+- Inspiración en "Solo Leveling" de Chugong
+- Comunidad educativa colombiana
+- Estudiantes beta-testers
+- Críticos de diseño educativo
 
 ---
 
-**Desarrollado con ❤️ para mejorar la educación en Colombia** 
+**¡Conviértete en el más fuerte de las matemáticas!** ⚔️📚 

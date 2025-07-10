@@ -77,7 +77,7 @@ async def register(
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.full_name,
+                "full_name": user.display_name,
                 "role": user.role,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified
@@ -156,7 +156,7 @@ async def login(
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.full_name,
+                "full_name": user.display_name,
                 "role": user.role,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified
@@ -202,7 +202,7 @@ async def google_auth(
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.full_name,
+                "full_name": user.display_name,
                 "role": user.role,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified
@@ -228,7 +228,7 @@ async def get_current_user_info(
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
-        full_name=current_user.full_name,
+        full_name=current_user.display_name,
         role=current_user.role,
         is_active=current_user.is_active,
         is_verified=current_user.is_verified,
@@ -285,7 +285,7 @@ async def refresh_token(
             user={
                 "id": str(user.id),
                 "email": user.email,
-                "full_name": user.full_name,
+                "full_name": user.display_name,
                 "role": user.role,
                 "is_active": user.is_active,
                 "is_verified": user.is_verified

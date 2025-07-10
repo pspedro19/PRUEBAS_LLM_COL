@@ -1,82 +1,89 @@
-version: '3.8'
-
 services:
-  # Frontend Next.js
   frontend:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
-        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    container_name: mathquest-frontend
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-    depends_on:
-      - backend
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_APP_NAME=MathQuest
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - mathquest-network
 
-  # Backend FastAPI
   backend:
-    build:
+    build: 
       context: ./backend
       dockerfile: Dockerfile
+    container_name: mathquest-backend
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/backend.env
     environment:
-      - DATABASE_URL=postgresql://icfes_user:icfes_password@postgres:5432/icfes_db
-      - JWT_SECRET=${JWT_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - postgres
-      - redis
+      - DATABASE_URL=postgresql://admin:admin123@db:5432/mathquest_db
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - JWT_ALGORITHM=HS256
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      # LLM Configuration
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=your-openai-api-key
+      - OPENAI_MODEL=gpt-4
+      - MAX_TOKENS=2000
+      - TEMPERATURE=0.7
     volumes:
       - ./backend:/app
-    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mathquest-network
 
-  # PostgreSQL Database
-  postgres:
+  db:
     image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=icfes_db
-      - POSTGRES_USER=icfes_user
-      - POSTGRES_PASSWORD=icfes_password
+    container_name: mathquest-db
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_DB=mathquest_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d mathquest_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mathquest-network
 
-  # Redis for caching and sessions
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-  # pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4
+    container_name: mathquest-pgadmin
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@icfes.com
+      - PGADMIN_DEFAULT_EMAIL=admin@mathquest.com
       - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_LISTEN_PORT=5050
     ports:
-      - "5050:80"
+      - "5050:5050"
     depends_on:
-      - postgres
-    restart: unless-stopped
+      - db
+    networks:
+      - mathquest-network
 
 volumes:
   postgres_data:
-  redis_data: 
+
+networks:
+  mathquest-network:
+    driver: bridge 

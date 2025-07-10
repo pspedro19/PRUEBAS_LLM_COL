@@ -49,6 +49,55 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Base Oscura
+        abyss: '#000000',
+        carbon: '#0A0A0A',
+        dungeon: '#141414',
+        shadow: '#1C1C1C',
+        
+        // Sistema Azul
+        neonSystem: '#00D9FF',
+        systemMedium: '#0099CC',
+        systemDark: '#006699',
+        cyanAwaken: '#00FFD1',
+        royalBlue: '#4169E1',
+        
+        // Púrpura Monarca
+        shadowPurple: '#6B46C1',
+        brightPurple: '#9333EA',
+        deepPurple: '#4C1D95',
+        neonPurple: '#A855F7',
+        darkPurple: '#2E1065',
+        
+        // Acentos de Poder
+        levelUp: '#FFD700',
+        ascension: '#FFA500',
+        bloodRed: '#DC143C',
+        portalRed: '#FF0000',
+        neonGreen: '#39FF14',
+        
+        // Rareza de Items
+        common: '#FFFFFF',
+        uncommon: '#00FF00',
+        rare: '#0080FF',
+        epic: '#AA00FF',
+        legendary: '#FF8800',
+        mythical: '#FF0044',
+        divine: '#FF00FF',
+      },
+      fontFamily: {
+        epicTitle: ['Cinzel', 'UnifrakturMaguntia', 'serif'],
+        epicUI: ['Orbitron', 'Rajdhani', 'sans-serif'],
+        epicStats: ['Fira Code', 'JetBrains Mono', 'monospace'],
+        epicNarration: ['Crimson Text', 'Playfair Display', 'serif'],
+        body: ['Inter', 'Poppins', 'sans-serif'],
+        display: ['Orbitron', 'Rajdhani', 'sans-serif'],
+      },
+      backgroundImage: {
+        'epic-tower': "url('/assets/bg-tower.jpg')",
+        'epic-dungeon': "url('/assets/bg-dungeon.jpg')",
+        'epic-portal': "url('/assets/bg-portal.jpg')",
+        'epic-ruins': "url('/assets/bg-ruins.jpg')",
       },
       borderRadius: {
         lg: "var(--radius)",

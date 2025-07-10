@@ -1,107 +1,11 @@
-# ICFES AI Tutor - .gitignore
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
-venv/
-venv-all/
-env/
-ENV/
-env.bak/
-venv.bak/
-.conda/
-
-# PyCharm
-.idea/
-*.iml
-*.iws
-
-# VS Code
-.vscode/
-*.code-workspace
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.venv
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Node.js
-node_modules/
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 lerna-debug.log*
-.pnpm-debug.log*
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Runtime data
 pids
@@ -113,7 +17,7 @@ pids
 lib-cov
 
 # Coverage directory used by tools like istanbul
-coverage/
+coverage
 *.lcov
 
 # nyc test coverage
@@ -125,115 +29,49 @@ coverage/
 # Bower dependency directory (https://bower.io/)
 bower_components
 
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
-
-# Dependency directories
-jspm_packages/
-
-# Snowpack dependency directory (https://snowpack.dev/)
-web_modules/
-
-# TypeScript cache
-*.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
+# node_modules
+node_modules/
+frontend/node_modules/
+backend/node_modules/
 
 # Next.js build output
-.next/
-out/
+frontend/.next/
+frontend/out/
 
-# Nuxt.js build / generate output
-.nuxt
-dist
+# Production builds
+frontend/build/
+backend/build/
+dist/
 
-# Gatsby files
-.cache/
-public
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
 
-# Storybook build outputs
-.out
-.storybook-out
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
 
-# Temporary folders
-tmp/
-temp/
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
-
-# yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-
-# Database files
+# Database
 *.db
 *.sqlite
 *.sqlite3
-icfes_tutor.db
 
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pino.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.coverage.*
-coverage.xml
-*.cover
-.hypothesis/
-.tox/
-
-# Documentation builds
-docs/_build/
-
-# Translations
-*.mo
-*.pot
-
-# Backup files
-*.bak
+# IDEs
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
@@ -247,75 +85,17 @@ docs/_build/
 ehthumbs.db
 Thumbs.db
 
-# Windows
-desktop.ini
-
-# Redis dump files
-dump.rdb
-
-# Certificates
-*.pem
-*.key
-*.crt
-
-# Configuration files with sensitive data
-config/local.json
-config/production.json
-
-# User uploads
-uploads/
-media/
-static/media/
-
-# Cache directories
-.cache/
-cache/
-
-# Lock files (keep package-lock.json for reproducible builds)
-# package-lock.json  # Uncomment if you want to ignore it
-yarn.lock
-
 # Docker
 .dockerignore
 
-# Terraform
-*.tfstate
-*.tfstate.*
-.terraform/
+# Backup files
+*.backup
+*.bak
 
-# Editor directories and files
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Temporary files
+*.tmp
+*.temp
 
-# Local development files
-.local
-local_settings.py
-
-# AI/ML models and large files
-*.h5
-*.pkl
-*.model
-models/
-checkpoints/
-
-# Data files
-data/
-datasets/
-*.csv
-*.json
-*.xml
-!package.json
-!tsconfig.json
-!next.config.js
-!tailwind.config.js
-!postcss.config.js
-
-# Jupyter
-*.ipynb
-
-# Temporary requirements files
-requirements-full.txt 
+# Docker volumes data
+postgres-data/
+pgadmin-data/ 

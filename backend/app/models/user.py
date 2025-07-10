@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -23,13 +24,21 @@ class AuthProvider(str, Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    username = Column(String(50), unique=True, index=True, nullable=True)
-    full_name = Column(String(255), nullable=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    display_name = Column(String(100), nullable=True)
+    avatar_url = Column(String(255), nullable=True)
+    
+    # Epic Game Stats
+    level = Column(Integer, default=1)
+    xp = Column(Integer, default=0)
+    rank = Column(String(50), default='Bronce I')
+    clan_id = Column(UUID(as_uuid=True), ForeignKey("clans.id"), nullable=True)
+    stats = Column(JSONB, default={})
     
     # Authentication
-    hashed_password = Column(String(255), nullable=True)  # None for OAuth users
     auth_provider = Column(String(20), default=AuthProvider.EMAIL.value)
     google_id = Column(String(255), unique=True, nullable=True)
     microsoft_id = Column(String(255), unique=True, nullable=True)
@@ -51,132 +60,63 @@ class User(Base):
     reset_password_expires = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    user_responses = relationship("UserResponse", back_populates="user", cascade="all, delete-orphan")
-    legacy_responses = relationship("Response", back_populates="user", cascade="all, delete-orphan")
-    sessions = relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
+    clan = relationship("Clan", back_populates="members")
+    responses = relationship("Response", back_populates="user", cascade="all, delete-orphan")
+    user_sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    study_sessions = relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<User(id={self.id}, email={self.email}, role={self.role})>"
+        return f"<User(id={self.id}, username={self.username}, level={self.level}, rank={self.rank})>"
+    
+    def get_stats_for_discipline(self, discipline: str) -> int:
+        """Get stats for a specific discipline"""
+        if not self.stats:
+            return 0
+        return self.stats.get(discipline, 0)
+    
+    def update_stats_for_discipline(self, discipline: str, value: int) -> None:
+        """Update stats for a specific discipline"""
+        if not self.stats:
+            self.stats = {}
+        self.stats[discipline] = value
+    
+    def add_xp(self, amount: int) -> None:
+        """Add XP and check for level up"""
+        self.xp += amount
+        # Simple level up logic: every 100 XP = 1 level
+        new_level = (self.xp // 100) + 1
+        if new_level > self.level:
+            self.level = new_level
+            self.update_rank()
+    
+    def update_rank(self) -> None:
+        """Update rank based on level"""
+        if self.level >= 30:
+            self.rank = "Diamante"
+        elif self.level >= 25:
+            self.rank = "Oro III"
+        elif self.level >= 20:
+            self.rank = "Oro II"
+        elif self.level >= 15:
+            self.rank = "Oro I"
+        elif self.level >= 10:
+            self.rank = "Plata I"
+        elif self.level >= 5:
+            self.rank = "Bronce II"
+        else:
+            self.rank = "Bronce I"
 
 
-class UserProfile(Base):
-    __tablename__ = "user_profiles"
+class Clan(Base):
+    __tablename__ = "clans"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
-    
-    # Academic Information
-    grade = Column(String(20), nullable=True)  # "10", "11", "universitario"
-    institution = Column(String(255), nullable=True)
-    target_career = Column(String(255), nullable=True)
-    target_universities = Column(JSON, nullable=True)  # ["Universidad Nacional", "Universidad de los Andes"]
-    
-    # Learning Preferences
-    preferred_study_time = Column(String(50), nullable=True)  # "morning", "afternoon", "evening"
-    learning_style = Column(String(50), nullable=True)  # "visual", "auditory", "kinesthetic"
-    difficulty_preference = Column(String(20), default="adaptive")  # "easy", "medium", "hard", "adaptive"
-    
-    # IRT Parameters per subject area
-    theta_matematicas = Column(Float, default=0.0)
-    theta_lectura_critica = Column(Float, default=0.0)
-    theta_ciencias_naturales = Column(Float, default=0.0)
-    theta_ciencias_sociales = Column(Float, default=0.0)
-    theta_ingles = Column(Float, default=0.0)
-    
-    # Confidence intervals for theta estimates
-    theta_std_errors = Column(JSON, nullable=True)
-    
-    # Study Metrics
-    total_study_time_minutes = Column(Integer, default=0)
-    questions_answered = Column(Integer, default=0)
-    questions_correct = Column(Integer, default=0)
-    current_streak = Column(Integer, default=0)
-    longest_streak = Column(Integer, default=0)
-    
-    # Personalization
-    avatar_url = Column(String(255), nullable=True)
-    timezone = Column(String(50), default="America/Bogota")
-    language = Column(String(10), default="es")
-    notifications_enabled = Column(Boolean, default=True)
-    email_notifications = Column(Boolean, default=True)
-    
-    # Analytics and Insights
-    strengths = Column(JSON, nullable=True)  # Areas where user excels
-    weaknesses = Column(JSON, nullable=True)  # Areas needing improvement
-    learning_patterns = Column(JSON, nullable=True)  # Time of day, frequency, etc.
-    
-    # Goals and Progress
-    daily_question_goal = Column(Integer, default=10)
-    weekly_study_goal_minutes = Column(Integer, default=300)  # 5 hours
-    target_exam_date = Column(DateTime(timezone=True), nullable=True)
-    
-    # Gamification
-    total_points = Column(Integer, default=0)
-    level = Column(Integer, default=1)
-    badges = Column(JSON, nullable=True)  # List of earned badges
-    achievements = Column(JSON, nullable=True)
-    
-    # Timestamps
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(50), unique=True, nullable=False)
+    description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="profile")
+    members = relationship("User", back_populates="clan")
     
     def __repr__(self):
-        return f"<UserProfile(user_id={self.user_id}, grade={self.grade})>"
-    
-    def get_theta_for_area(self, area: str) -> float:
-        """Get theta (ability estimate) for a specific subject area"""
-        area_mapping = {
-            "matematicas": self.theta_matematicas,
-            "lectura_critica": self.theta_lectura_critica,
-            "ciencias_naturales": self.theta_ciencias_naturales,
-            "ciencias_sociales": self.theta_ciencias_sociales,
-            "ingles": self.theta_ingles
-        }
-        return area_mapping.get(area.lower(), 0.0)
-    
-    def update_theta_for_area(self, area: str, new_theta: float) -> None:
-        """Update theta estimate for a specific subject area"""
-        area_mapping = {
-            "matematicas": "theta_matematicas",
-            "lectura_critica": "theta_lectura_critica", 
-            "ciencias_naturales": "theta_ciencias_naturales",
-            "ciencias_sociales": "theta_ciencias_sociales",
-            "ingles": "theta_ingles"
-        }
-        
-        attr_name = area_mapping.get(area.lower())
-        if attr_name:
-            setattr(self, attr_name, new_theta)
-    
-    def calculate_overall_progress(self) -> Dict[str, Any]:
-        """Calculate overall progress metrics"""
-        accuracy = (self.questions_correct / self.questions_answered * 100) if self.questions_answered > 0 else 0
-        
-        # Calculate average theta across all areas
-        thetas = [
-            self.theta_matematicas,
-            self.theta_lectura_critica,
-            self.theta_ciencias_naturales,
-            self.theta_ciencias_sociales,
-            self.theta_ingles
-        ]
-        avg_theta = sum(thetas) / len(thetas)
-        
-        # Convert theta to a 0-100 score (theta typically ranges from -3 to +3)
-        # Using a sigmoid transformation: score = 100 / (1 + exp(-theta))
-        import math
-        score = 100 / (1 + math.exp(-avg_theta))
-        
-        return {
-            "overall_score": round(score, 1),
-            "accuracy_percentage": round(accuracy, 1),
-            "questions_answered": self.questions_answered,
-            "study_time_hours": round(self.total_study_time_minutes / 60, 1),
-            "current_streak": self.current_streak,
-            "level": self.level,
-            "total_points": self.total_points
-        } 
+        return f"<Clan(id={self.id}, name={self.name})>" 

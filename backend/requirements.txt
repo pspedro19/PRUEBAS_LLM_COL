@@ -1,54 +1,18 @@
-# ICFES AI Tutor Backend - Python Dependencies
-# Core FastAPI and web framework
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-
-# Database and ORM
+uvicorn==0.24.0
 sqlalchemy==2.0.23
-alembic==1.12.1
+sqlalchemy[asyncio]
 psycopg2-binary==2.9.9
-asyncpg==0.29.0
-aiosqlite==0.19.0
-
-# Authentication and Security
+pydantic==2.5.1
+pydantic-settings==2.1.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-oauth2==1.1.1
-authlib==1.2.1
-
-# Redis for caching and sessions
-redis==5.0.1
-
-# OpenAI and AI services
-openai>=1.6.1
-langchain==0.0.350
-langchain-openai==0.0.2
-
-# Data validation and serialization
-pydantic==2.5.0
-pydantic-settings==2.1.0
-
-# HTTP client
-httpx==0.25.2
-requests==2.31.0
-
-# Scientific computing for IRT
-numpy==1.26.4
-scipy==1.11.4
-pandas==2.1.4
-
-# Environment variables
+bcrypt==4.0.1
+python-multipart==0.0.6
+alembic==1.12.1
 python-dotenv==1.0.0
+email-validator==2.1.0.post1
+asyncpg
 
-# Email support
-fastapi-mail==1.4.1
-
-# CORS middleware
-fastapi-cors==0.0.6
-
-# Rate limiting
-slowapi==0.1.9
-
-# Type hints
-typing-extensions==4.8.0 
+# LLM Dependencies
+openai>=1.6.1 

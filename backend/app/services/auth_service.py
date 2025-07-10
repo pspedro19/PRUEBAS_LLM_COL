@@ -13,7 +13,7 @@ import bcrypt
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User, UserProfile, AuthProvider, UserRole
+from app.models.user import User, AuthProvider, UserRole
 from app.models.session_models import UserSession
 
 logger = logging.getLogger(__name__)
@@ -35,17 +35,7 @@ class AuthService:
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verifica una contraseña contra su hash"""
         try:
-            # Primero intentar con passlib
-            logger.debug(f"Intentando verificar contraseña con passlib")
-            if pwd_context.verify(plain_password, hashed_password):
-                return True
-                
-            # Si falla, intentar directamente con bcrypt
-            logger.debug(f"Intentando verificar contraseña con bcrypt")
-            return bcrypt.checkpw(
-                plain_password.encode('utf-8'),
-                hashed_password.encode('utf-8')
-            )
+            return pwd_context.verify(plain_password, hashed_password)
         except Exception as e:
             logger.error(f"Error verificando contraseña: {str(e)}")
             return False
@@ -54,22 +44,13 @@ class AuthService:
     def get_password_hash(password: str) -> str:
         """Genera hash de una contraseña"""
         try:
-            # Intentar primero con passlib
-            logger.debug(f"Intentando generar hash con passlib")
             return pwd_context.hash(password)
         except Exception as e:
-            logger.error(f"Error al generar hash con passlib: {str(e)}")
-            try:
-                # Fallback a bcrypt directo
-                logger.debug(f"Intentando generar hash con bcrypt")
-                salt = bcrypt.gensalt(rounds=12)
-                return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
-            except Exception as e2:
-                logger.error(f"Error al generar hash con bcrypt: {str(e2)}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error al procesar la contraseña"
-                )
+            logger.error(f"Error al generar hash: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al procesar la contraseña"
+            )
     
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -136,11 +117,11 @@ class AuthService:
             if not user:
                 return None
             
-            if not user.hashed_password:
+            if not user.password_hash:
                 # Usuario OAuth sin contraseña
                 return None
             
-            if not AuthService.verify_password(password, user.hashed_password):
+            if not AuthService.verify_password(password, user.password_hash):
                 return None
             
             # Actualizar último login
@@ -180,8 +161,9 @@ class AuthService:
             
             user = User(
                 email=email,
-                full_name=full_name,
-                hashed_password=hashed_password,
+                username=email.split('@')[0],  # Usar parte del email como username
+                password_hash=hashed_password,
+                display_name=full_name,
                 auth_provider=auth_provider.value,
                 role=UserRole.STUDENT.value,
                 is_active=True,
@@ -189,16 +171,6 @@ class AuthService:
             )
             
             db.add(user)
-            await db.flush()  # Para obtener el ID
-            
-            # Crear perfil inicial
-            profile = UserProfile(
-                user_id=user.id,
-                language="es",
-                timezone="America/Bogota"
-            )
-            
-            db.add(profile)
             await db.commit()
             await db.refresh(user)
             
@@ -303,42 +275,51 @@ class AuthService:
             )
     
     @staticmethod
-    async def create_user_session(
-        user: User,
-        ip_address: str,
-        user_agent: str,
-        db: AsyncSession
-    ) -> UserSession:
-        """Crea una nueva sesión de usuario"""
+    async def create_user_session(user: User, ip_address: str, user_agent: str, db: AsyncSession) -> UserSession:
+        """
+        Crea una sesión de usuario, genera tokens y guarda la sesión en la base de datos.
+        """
         try:
-            # Generar tokens
-            access_token = AuthService.create_access_token(
-                data={"sub": str(user.id), "email": user.email, "role": user.role}
-            )
-            refresh_token = AuthService.create_refresh_token(
-                data={"sub": str(user.id), "type": "refresh"}
-            )
-            
-            # Crear sesión
+            # Datos para el token
+            token_data = {
+                "sub": str(user.id),
+                "email": user.email,
+                "role": user.role,
+            }
+
+            # Crear tokens (métodos síncronos)
+            access_token = AuthService.create_access_token(token_data)
+            refresh_token = AuthService.create_refresh_token(token_data)
+
+            # Calcular tiempo de expiración (7 días para refresh token)
+            expires_at = datetime.utcnow() + timedelta(days=7)
+
+            # Crear sesión en la base de datos
             session = UserSession(
                 user_id=user.id,
                 session_token=access_token,
                 refresh_token=refresh_token,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                expires_at=datetime.utcnow() + timedelta(hours=24)
+                expires_at=expires_at,
+                is_active=True
             )
-            
+
+            # Agregar y guardar la sesión
             db.add(session)
             await db.commit()
             await db.refresh(session)
-            
+
+            logger.info(f"Created user session for user {user.email}")
             return session
-            
+
         except Exception as e:
             logger.error(f"Error creating user session: {e}")
             await db.rollback()
-            raise
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error creating user session"
+            )
     
     @staticmethod
     async def get_current_user_from_token(token: str, db: AsyncSession) -> User:

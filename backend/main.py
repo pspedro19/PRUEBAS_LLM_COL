@@ -1,40 +1,37 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.main import api_router
-from app.core.database import init_db
-import asyncio
+from app.api.endpoints import auth, questions, users
 
+# Crear la aplicación FastAPI
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
+    version=settings.APP_VERSION,
 )
 
-# Configure CORS
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
+# Incluir los routers
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 
 @app.get("/")
-def root():
-    return {"message": "Hello World"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+async def root():
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "description": settings.APP_DESCRIPTION
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

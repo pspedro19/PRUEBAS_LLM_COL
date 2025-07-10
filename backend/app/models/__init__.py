@@ -1,18 +1,14 @@
 # Import all models here to ensure they are registered with SQLAlchemy
-from .user import User, UserProfile
-from .question import Question, QuestionArea, QuestionResponse, IRTParameters
-from .response import UserResponse, ChainOfThoughtStep
+from .user import User, Clan
+from .question import Question
+from .response import Response
 from .session_models import UserSession, StudySession
 
 __all__ = [
     "User",
-    "UserProfile", 
+    "Clan",
     "Question",
-    "QuestionArea",
-    "QuestionResponse", 
-    "IRTParameters",
-    "UserResponse",
-    "ChainOfThoughtStep",
+    "Response",
     "UserSession",
     "StudySession"
 ] 
