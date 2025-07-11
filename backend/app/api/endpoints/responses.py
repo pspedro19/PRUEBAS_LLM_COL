@@ -2,14 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import logging
 
 from app.core.database import get_db
-from app.services.auth_service import get_current_user
+from app.core.security import get_current_user
 from app.models.user import User
 from app.models.question import Question
-from app.models.response import Response
+from app.models.user_response import UserResponse
+from app.services.question_service import QuestionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -56,7 +57,7 @@ async def submit_response(
         is_correct = response_data.answer_text == question.correct_option
         
         # Crear la respuesta
-        response = Response(
+        response = UserResponse(
             user_id=current_user.id,
             question_id=question.id,
             answer_text=response_data.answer_text,
@@ -113,9 +114,9 @@ async def get_response_history(
     """Obtener historial de respuestas del usuario"""
     try:
         responses_result = await db.execute(
-            select(Response)
-            .where(Response.user_id == current_user.id)
-            .order_by(Response.created_at.desc())
+                    select(UserResponse)
+        .where(UserResponse.user_id == current_user.id)
+        .order_by(UserResponse.created_at.desc())
         )
         responses = responses_result.scalars().all()
         

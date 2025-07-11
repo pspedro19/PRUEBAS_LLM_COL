@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 import logging
 
 from app.core.database import get_db
-from app.services.auth_service import get_current_user
+from app.core.security import get_current_user
 from app.services.chain_of_thought_service import ChainOfThoughtService
 from app.services.irt_service import IRTService
 from app.models.user import User

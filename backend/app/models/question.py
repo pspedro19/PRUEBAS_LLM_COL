@@ -1,52 +1,80 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
-import uuid
-from datetime import datetime
-from typing import Optional, Dict, Any, List
-from enum import Enum
+import enum
 
+# Temporarily commented out to avoid enum validation issues
+# class DifficultyLevel(enum.Enum):
+#     PRINCIPIANTE = "principiante"
+#     INTERMEDIO = "intermedio"
+#     AVANZADO = "avanzado"
+#     EXPERTO = "experto"
 
-class Discipline(str, Enum):
-    MAT = "MAT"
-    LC = "LC"
-    SOC = "SOC"
-    CIE = "CIE"
-    ING = "ING"
-
+# class ICFESArea(enum.Enum):
+#     MATEMATICAS = "matematicas"
+#     LECTURA_CRITICA = "lectura_critica"
+#     CIENCIAS_NATURALES = "ciencias_naturales"
+#     SOCIALES_CIUDADANAS = "sociales_ciudadanas"
+#     INGLES = "ingles"
 
 class Question(Base):
     __tablename__ = "questions"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id = Column(Integer, primary_key=True, index=True)
     
-    # Epic Game Fields
-    discipline = Column(String(50), nullable=False, index=True)
-    difficulty = Column(Integer, nullable=False, index=True)
-    topic = Column(String(100), nullable=True)
-    question_text = Column(Text, nullable=False, unique=True)
-    options = Column(JSONB, nullable=False)
-    correct_option = Column(String(10), nullable=False)
-    reward_xp = Column(Integer, default=10)
-    reward_item = Column(String(50), nullable=True)
+    # Contenido de la pregunta
+    title = Column(String(500), nullable=False)  # Título/enunciado principal
+    content = Column(Text, nullable=False)  # Contenido completo de la pregunta
+    explanation = Column(Text, nullable=True)  # Explicación de la respuesta correcta
+    
+    # Opciones múltiples (formato JSON en string)
+    option_a = Column(String(500), nullable=False)
+    option_b = Column(String(500), nullable=False)
+    option_c = Column(String(500), nullable=False)
+    option_d = Column(String(500), nullable=False)
+    
+    # Respuesta correcta (A, B, C, D)
+    correct_answer = Column(String(1), nullable=False)
+    
+    # Metadatos para clasificación - Using String instead of Enum to avoid conflicts
+    area = Column(String(50), nullable=False, default="matematicas")
+    topic = Column(String(100), nullable=False)  # ej: "algebra_basica", "geometria"
+    subtopic = Column(String(100), nullable=True)  # ej: "ecuaciones_lineales"
+    difficulty = Column(String(20), nullable=False, default="intermedio")
+    
+    # Estadísticas de la pregunta
+    times_answered = Column(Integer, default=0)
+    times_correct = Column(Integer, default=0)
+    success_rate = Column(Float, default=0.0)  # Porcentaje de aciertos
+    
+    # Configuración
+    is_active = Column(Boolean, default=True)
+    points_value = Column(Integer, default=10)  # Puntos que otorga
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationships
-    responses = relationship("Response", back_populates="question", cascade="all, delete-orphan")
-    
+    # Relaciones
+    user_responses = relationship("UserResponse", back_populates="question")
+
+    def update_statistics(self):
+        """Actualiza las estadísticas de la pregunta basada en las respuestas"""
+        if self.times_answered > 0:
+            self.success_rate = (self.times_correct / self.times_answered) * 100
+        else:
+            self.success_rate = 0.0
+
+    def get_difficulty_points(self):
+        """Retorna puntos basados en dificultad"""
+        difficulty_multiplier = {
+            "principiante": 1.0,
+            "intermedio": 1.5,
+            "avanzado": 2.0,
+            "experto": 3.0
+        }
+        return int(self.points_value * difficulty_multiplier.get(self.difficulty, 1.0))
+
     def __repr__(self):
-        return f"<Question(id={self.id}, discipline={self.discipline}, difficulty={self.difficulty})>"
-    
-    def get_difficulty_stars(self) -> int:
-        """Get difficulty as number of stars (1-5)"""
-        return min(5, max(1, self.difficulty))
-    
-    def get_reward_description(self) -> str:
-        """Get human-readable reward description"""
-        if self.reward_item:
-            return f"{self.reward_xp} XP + {self.reward_item}"
-        return f"{self.reward_xp} XP" 
+        return f"<Question(id={self.id}, title='{self.title[:50]}...', area={self.area})>" 

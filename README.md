@@ -1,160 +1,160 @@
-# MathQuest - Solo Leveling Edition 🎮📚
+# ICFES Quest - Epic Learning Platform
 
-Una plataforma educativa inmersiva que fusiona la preparación para el ICFES con la narrativa épica de "Solo Leveling". Domina las matemáticas a través de batallas épicas, sistemas de nivelación y un árbol de talentos único.
+## 🚀 Quick Start with Docker
 
-## ✨ Características Principales
+### Prerequisites
+- Docker and Docker Compose installed
+- Git
 
-### 🎯 **Diseño Visual Mejorado**
-- **Tipografía Dual**: Cinzel para títulos épicos, Inter para legibilidad
-- **Paleta de Colores Optimizada**: Azul cian para marca, grises para texto, acentos dorados
-- **Efectos Visuales Moderados**: Neon-glow equilibrado sin sacrificar contraste
-- **Navegación Responsiva**: Sticky navbar en desktop, bottom nav en móvil
+### Setup Instructions
 
-### 🏗️ **Arquitectura de Información**
-- **Hero Section Mejorado**: Sub-headline claro + teaser interactivo
-- **Panel de Estadísticas Avanzado**: Barras de progreso circulares con tooltips
-- **Jerarquía Visual Clara**: Información organizada por importancia
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd PRUEBAS_LLM_COL
+   ```
 
-### ⚔️ **Sistema de Gamificación**
-- **Árbol de Talentos**: Habilidades matemáticas como nodos desbloqueables
-- **Misiones Diarias**: Recompensas variables para inducir hábito
-- **Sistema de Ranking**: Tablas responsivas con filtros (global, amigos, colegio)
-- **Logros Sociales**: Compartir progreso en redes sociales
+2. **Configure environment variables**
+   ```bash
+   # Copy the example environment file
+   cp backend/.env.example backend/backend.env
+   
+   # Edit the environment file if needed (optional for development)
+   # The default values work for Docker development setup
+   ```
 
-### 📊 **Componentes Nuevos**
-- `EpicStatsPanel`: Estadísticas con barras circulares y microinteracciones
-- `SkillTree`: Árbol de talentos con conexiones visuales
-- `EpicRanking`: Ranking con filtros y funcionalidad social
-- Páginas especializadas: `/practice`, `/dashboard`
+3. **Start all services with Docker**
+   ```bash
+   docker-compose up --build
+   ```
 
-## 🚀 Tecnologías
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: FastAPI, Python, PostgreSQL
-- **Diseño**: Componentes modulares, CSS Grid, Flexbox
-- **Accesibilidad**: WCAG AA, lectores de pantalla, modo alto contraste
+### Test Users
 
-## 🎨 Mejoras de UX Implementadas
+The following test users are available for testing:
 
-### 1. **Legibilidad y Accesibilidad**
-- Contraste mejorado (WCAG AA 4.5:1)
-- Soporte para `prefers-reduced-motion`
-- Etiquetas ARIA para lectores de pantalla
-- Indicadores de foco visibles
+1. **Admin User**
+   - Email: admin@test.com
+   - Password: admin123
 
-### 2. **Interactividad**
-- Hover states informativos
-- Tooltips contextuales
-- Animaciones suaves y responsivas
-- Microinteracciones para feedback
+2. **Teacher User**
+   - Email: teacher@test.com
+   - Password: teacher123
 
-### 3. **Gamificación Educativa**
-- Progreso visual claro
-- Recompensas inmediatas
-- Sistema de rachas
-- Logros desbloqueables
+3. **Student User**
+   - Email: student@test.com
+   - Password: student123
 
-### 4. **Responsividad**
-- Diseño mobile-first
-- Navegación adaptativa
-- Tablas responsivas
-- Componentes flexibles
+## 🎮 Features
 
-## 📁 Estructura del Proyecto
+- **Epic gamified learning experience** with fantasy RPG elements
+- **Interactive quizzes** with real-time feedback and explanations
+- **Progress tracking** and achievement system
+- **Role-based access control** (Admin, Teacher, Student)
+- **Beautiful and responsive UI** with epic effects
+- **Secure JWT authentication** system
+- **PostgreSQL database** for reliable data storage
+
+## 🧪 Quiz System
+
+### How to Test the Quiz
+
+1. Login at http://localhost:3000/auth/login with any test user
+2. Navigate to http://localhost:3000/prueba/matematicas/algebra-basica
+3. Click "Comenzar Quiz"
+4. Answer 5 questions with automatic progression
+5. View final results and feedback
+
+### Quiz Features
+- 5 questions per session
+- Automatic progression with 3-second feedback display
+- Real-time accuracy tracking
+- Detailed explanations for each answer
+- Final performance summary with personalized feedback
+
+## 🛠️ Development Setup
+
+### Manual Setup (Alternative to Docker)
+
+1. **Backend Setup**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   
+   # Copy environment file
+   cp .env.example backend.env
+   
+   # Start backend
+   python main_simple.py
+   ```
+
+2. **Frontend Setup**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+3. **Database Setup**
+   ```bash
+   # The database will be automatically initialized with sample questions
+   # when using Docker setup
+   ```
+
+## 📁 Project Structure
 
 ```
-frontend/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx              # Página principal mejorada
-│   │   ├── practice/page.tsx     # Árbol de talentos y misiones
-│   │   ├── dashboard/page.tsx    # Perfil y analíticas
-│   │   └── globals.css           # Estilos mejorados
-│   ├── components/
-│   │   ├── EpicStatsPanel.tsx    # Estadísticas circulares
-│   │   ├── SkillTree.tsx         # Árbol de talentos
-│   │   ├── EpicRanking.tsx       # Ranking con filtros
-│   │   └── EpicNavigation.tsx    # Navegación mejorada
-│   └── lib/
-└── tailwind.config.js            # Configuración extendida
+PRUEBAS_LLM_COL/
+├── backend/                 # FastAPI backend
+│   ├── app/                # Application code
+│   │   ├── api/           # API endpoints
+│   │   ├── core/          # Configuration and database
+│   │   ├── models/        # SQLAlchemy models
+│   │   ├── schemas/       # Pydantic schemas
+│   │   └── services/      # Business logic
+│   ├── main_simple.py     # Simplified main application
+│   └── Dockerfile.simple  # Docker configuration
+├── frontend/               # Next.js frontend
+│   └── src/
+│       ├── app/           # Next.js app router
+│       ├── components/    # React components
+│       └── lib/           # Utilities
+├── database/              # Database initialization
+│   └── init_new.sql      # Database schema and sample data
+└── docker-compose.yml    # Docker services configuration
 ```
 
-## 🎯 Métricas de Éxito
+## 🔧 Environment Configuration
 
-- **TTST (Time to Solve First Task)**: < 30 segundos
-- **NPS (Net Promoter Score)**: Objetivo > 50
-- **Retención**: 7 días consecutivos
-- **Accesibilidad**: WCAG AA compliance
+The project uses the following environment variables (see `backend/.env.example`):
 
-## 🔧 Instalación
+- **Database**: PostgreSQL connection settings
+- **Security**: JWT secrets and token expiration
+- **External APIs**: OpenAI integration (optional)
+- **CORS**: Frontend-backend communication settings
 
-```bash
-# Clonar repositorio
-git clone [url-del-repositorio]
+## 🐳 Docker Services
 
-# Instalar dependencias frontend
-cd frontend
-npm install
+- **frontend**: Next.js application (port 3000)
+- **backend**: FastAPI application (port 8000)
+- **db**: PostgreSQL database (port 5432)
 
-# Configurar variables de entorno
-cp .env.example .env.local
+## 📚 API Documentation
 
-# Ejecutar en desarrollo
-npm run dev
-```
+The API documentation is available at http://localhost:8000/docs when the backend is running.
 
-## 🎮 Uso
+## 🤝 Contributing
 
-1. **Registro/Login**: Accede con tu cuenta
-2. **Explorar Habilidades**: Visita el árbol de talentos
-3. **Completar Misiones**: Gana XP y recompensas
-4. **Competir**: Sube en el ranking global
-5. **Compartir**: Muestra tu progreso en redes
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test the changes with Docker
+5. Submit a pull request
 
-## 🎨 Personalización
+## 📄 License
 
-### Colores
-```css
---neonSystem: #00D9FF;    /* Color principal */
---levelUp: #FFD700;       /* Acentos dorados */
---brightPurple: #9333EA;  /* Púrpura monarca */
---neonGreen: #39FF14;     /* Verde éxito */
-```
-
-### Tipografías
-```css
-font-epicTitle: Cinzel    /* Títulos épicos */
-font-body: Inter          /* Texto legible */
-font-display: Orbitron    /* Elementos UI */
-```
-
-## 📈 Roadmap
-
-- [ ] **Sistema de Clanes**: Cooperación entre estudiantes
-- [ ] **Eventos Temporales**: Competencias especiales
-- [ ] **Analíticas Avanzadas**: Machine Learning para personalización
-- [ ] **Modo Offline**: Sincronización con IndexedDB
-- [ ] **Integración ICFES**: Contenido oficial actualizado
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
-
-## 🙏 Agradecimientos
-
-- Inspiración en "Solo Leveling" de Chugong
-- Comunidad educativa colombiana
-- Estudiantes beta-testers
-- Críticos de diseño educativo
-
----
-
-**¡Conviértete en el más fuerte de las matemáticas!** ⚔️📚 
+This project is for educational purposes. 

@@ -51,6 +51,10 @@ dist/
 .env.production.local
 .env.backup
 
+# Allow example environment files
+!.env.example
+!*.env.example
+
 # Python
 __pycache__/
 *.py[cod]

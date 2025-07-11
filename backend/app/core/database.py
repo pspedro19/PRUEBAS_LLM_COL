@@ -1,25 +1,38 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from .config import settings
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from app.core.config import settings
+import logging
 
-# Asegurarse de que el URL es asyncpg
-DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+logger = logging.getLogger(__name__)
 
+# Create async engine
 engine = create_async_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
+    settings.SQLALCHEMY_DATABASE_URI,
+    echo=settings.DB_ECHO_LOG,
+    future=True,
 )
 
-AsyncSessionLocal = async_sessionmaker(
+# Create async session factory
+async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
 )
 
+# Create declarative base
 Base = declarative_base()
 
-async def get_db():
-    async with AsyncSessionLocal() as db:
-        yield db 
+async def init_models():
+    """Initialize database models"""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+async def get_db() -> AsyncSession:
+    """Dependency for getting async database session"""
+    async with async_session_maker() as session:
+        try:
+            yield session
+        finally:
+            await session.close() 

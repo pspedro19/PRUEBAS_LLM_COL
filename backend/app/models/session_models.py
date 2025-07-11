@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, Float, JSON
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
-import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from enum import Enum
@@ -28,8 +26,8 @@ class UserSession(Base):
     """User login sessions for authentication and tracking"""
     __tablename__ = "user_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Session identification
     session_token = Column(String(255), unique=True, nullable=False, index=True)
@@ -53,7 +51,7 @@ class UserSession(Base):
     
     # Security
     is_suspicious = Column(Boolean, default=False)
-    security_flags = Column(JSONB, nullable=True)  # ["unusual_location", "unusual_device"]
+    security_flags = Column(JSON, nullable=True)  # ["unusual_location", "unusual_device"]
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -95,14 +93,14 @@ class StudySession(Base):
     """Individual study sessions with questions and progress tracking"""
     __tablename__ = "study_sessions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    user_session_id = Column(UUID(as_uuid=True), ForeignKey("user_sessions.id"), nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_session_id = Column(Integer, ForeignKey("user_sessions.id"), nullable=True)
     
     # Session configuration
     session_type = Column(String(20), default=SessionType.PRACTICE.value, index=True)
     subject_area = Column(String(30), nullable=True, index=True)  # Focus area for this session
-    target_competencies = Column(JSONB, nullable=True)   # Specific competencies to work on
+    target_competencies = Column(JSON, nullable=True)   # Specific competencies to work on
     
     # Session planning
     planned_duration_minutes = Column(Integer, nullable=True)
@@ -122,9 +120,9 @@ class StudySession(Base):
     total_active_time_ms = Column(Integer, default=0)  # Actual active time
     
     # IRT and Adaptive Learning
-    starting_theta = Column(JSONB, nullable=True)  # Theta values at session start
-    ending_theta = Column(JSONB, nullable=True)    # Theta values at session end
-    theta_improvement = Column(JSONB, nullable=True)  # Improvement per area
+    starting_theta = Column(JSON, nullable=True)  # Theta values at session start
+    ending_theta = Column(JSON, nullable=True)    # Theta values at session end
+    theta_improvement = Column(JSON, nullable=True)  # Improvement per area
     
     # Session performance
     average_response_time_ms = Column(Integer, nullable=True)
@@ -133,9 +131,9 @@ class StudySession(Base):
     accuracy_percentage = Column(Float, nullable=True)
     
     # Learning analytics
-    concepts_practiced = Column(JSONB, nullable=True)
-    concepts_mastered = Column(JSONB, nullable=True)
-    concepts_struggling = Column(JSONB, nullable=True)
+    concepts_practiced = Column(JSON, nullable=True)
+    concepts_mastered = Column(JSON, nullable=True)
+    concepts_struggling = Column(JSON, nullable=True)
     
     # Behavioral patterns
     engagement_score = Column(Float, nullable=True)  # 0-1 scale
@@ -146,17 +144,17 @@ class StudySession(Base):
     user_satisfaction = Column(Integer, nullable=True)  # 1-5 scale
     perceived_difficulty = Column(Integer, nullable=True)  # 1-5 scale
     user_feedback = Column(Text, nullable=True)
-    recommended_next_topics = Column(JSONB, nullable=True)
+    recommended_next_topics = Column(JSON, nullable=True)
     
     # Interruptions and breaks
     pause_count = Column(Integer, default=0)
     total_pause_time_ms = Column(Integer, default=0)
-    interruption_reasons = Column(JSONB, nullable=True)
+    interruption_reasons = Column(JSON, nullable=True)
     
     # AI insights
-    ai_recommendations = Column(JSONB, nullable=True)
-    learning_path_adjustments = Column(JSONB, nullable=True)
-    performance_insights = Column(JSONB, nullable=True)
+    ai_recommendations = Column(JSON, nullable=True)
+    learning_path_adjustments = Column(JSON, nullable=True)
+    performance_insights = Column(JSON, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -164,5 +162,4 @@ class StudySession(Base):
     
     # Relationships
     user = relationship("User", back_populates="study_sessions")
-    user_session = relationship("UserSession", back_populates="study_sessions")
-    responses = relationship("Response", back_populates="study_session", cascade="all, delete-orphan") 
+    user_session = relationship("UserSession", back_populates="study_sessions") 

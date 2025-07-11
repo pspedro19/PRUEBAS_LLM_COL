@@ -4,14 +4,22 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    username: str
     email: EmailStr
+    username: str
     display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
 
 
 class UserCreate(UserBase):
     password: str
+
+
+class UserResponse(UserBase):
+    id: str
+    is_active: bool
+    is_verified: bool
+
+    class Config:
+        from_attributes = True
 
 
 class UserUpdate(BaseModel):

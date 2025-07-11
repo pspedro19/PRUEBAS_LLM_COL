@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any, List
 import logging
 
 from app.core.database import get_db
-from app.services.auth_service import get_current_user
+from app.core.security import get_current_user
 from app.models.user import User, Clan
 from app.schemas.user import UserStats, UserWithClan, Clan as ClanSchema
 
@@ -46,9 +46,9 @@ async def get_user_profile(
             clan = clan_result.scalar_one_or_none()
         
         # Calcular estadísticas de respuestas
-        from app.models.response import Response
+        from app.models.user_response import UserResponse
         responses_result = await db.execute(
-            select(Response).where(Response.user_id == current_user.id)
+            select(UserResponse).where(UserResponse.user_id == current_user.id)
         )
         responses = responses_result.scalars().all()
         

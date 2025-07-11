@@ -7,9 +7,10 @@ import logging
 import uuid
 
 from app.core.database import get_db
-from app.services.auth_service import get_current_user
+from app.core.security import get_current_user
 from app.models.user import User
-from app.models.question import Question, Discipline
+from app.models.question import Question
+# Removed enum imports since they are commented out
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,32 +33,43 @@ class QuestionResponse(BaseModel):
     reward_item: Optional[str]
 
 
-@router.get("/disciplines")
-async def get_disciplines():
-    """Obtener todas las disciplinas disponibles"""
+@router.get("/areas")
+async def get_areas():
+    """Obtener todas las áreas ICFES disponibles"""
     return [
-        {"code": "MAT", "name": "Matemáticas", "icon": "🔢"},
-        {"code": "LC", "name": "Lectura Crítica", "icon": "📖"},
-        {"code": "SOC", "name": "Ciencias Sociales", "icon": "🏛️"},
-        {"code": "CIE", "name": "Ciencias Naturales", "icon": "🧬"},
-        {"code": "ING", "name": "Inglés", "icon": "🌍"}
+        {"code": "matematicas", "name": "Matemáticas", "icon": "🧮"},
+        {"code": "lectura_critica", "name": "Lectura Crítica", "icon": "📚"},
+        {"code": "ciencias_naturales", "name": "Ciencias Naturales", "icon": "🔬"},
+        {"code": "sociales_ciudadanas", "name": "Sociales y Ciudadanas", "icon": "🏛️"},
+        {"code": "ingles", "name": "Inglés", "icon": "🌍"}
     ]
 
 
 @router.get("/next")
 async def get_next_question(
-    discipline: Optional[str] = Query(None, description="Filter by discipline"),
+    area: Optional[str] = Query(None, description="Filter by ICFES area"),
+    topic: Optional[str] = Query(None, description="Filter by topic"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Obtener la siguiente pregunta para el usuario"""
     try:
         # Construir query base
-        query = select(Question).filter(Question.discipline.isnot(None))
+        query = select(Question).filter(Question.is_active == True)
         
-        # Filtrar por disciplina si se especifica
-        if discipline:
-            query = query.filter(Question.discipline == discipline)
+        # Filtrar por área si se especifica
+        if area:
+            valid_areas = ["matematicas", "lectura_critica", "ciencias_naturales", "sociales_ciudadanas", "ingles"]
+            if area not in valid_areas:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid area: {area}"
+                )
+            query = query.filter(Question.area == area)
+        
+        # Filtrar por tema si se especifica
+        if topic:
+            query = query.filter(Question.topic == topic)
         
         # Obtener pregunta aleatoria
         result = await db.execute(
@@ -66,43 +78,32 @@ async def get_next_question(
         question = result.scalar_one_or_none()
         
         if not question:
-            # Pregunta de ejemplo si no hay preguntas en la BD
-            return QuestionResponse(
-                id=str(uuid.uuid4()),
-                discipline="MAT",
-                difficulty=2,
-                topic="Ecuaciones",
-                question="¿Cuál es el valor de x en 2x + 5 = 15?",
-                options=[
-                    QuestionOption(id="A", text="x = 5", isCorrect=True),
-                    QuestionOption(id="B", text="x = 10", isCorrect=False),
-                    QuestionOption(id="C", text="x = 7.5", isCorrect=False),
-                    QuestionOption(id="D", text="x = 20", isCorrect=False)
-                ],
-                reward_xp=15,
-                reward_item="Poción de Concentración"
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No questions available with the specified criteria"
             )
         
-        # Convertir opciones del formato JSONB
-        options = []
-        for option_data in question.options:
-            options.append(QuestionOption(
-                id=option_data["id"],
-                text=option_data["text"],
-                isCorrect=(option_data["id"] == question.correct_option)
-            ))
+        # Crear opciones en el formato legacy
+        options = [
+            QuestionOption(id="A", text=question.option_a, isCorrect=(question.correct_answer == "A")),
+            QuestionOption(id="B", text=question.option_b, isCorrect=(question.correct_answer == "B")),
+            QuestionOption(id="C", text=question.option_c, isCorrect=(question.correct_answer == "C")),
+            QuestionOption(id="D", text=question.option_d, isCorrect=(question.correct_answer == "D"))
+        ]
         
         return QuestionResponse(
             id=str(question.id),
-            discipline=question.discipline,
-            difficulty=question.difficulty,
+            discipline=question.area, # Changed from question.area.value to question.area
+            difficulty=["principiante", "intermedio", "avanzado", "experto"].index(question.difficulty) + 1, # Changed from question.difficulty.value to question.difficulty
             topic=question.topic,
-            question=question.question_text,
+            question=question.content,
             options=options,
-            reward_xp=question.reward_xp,
-            reward_item=question.reward_item
+            reward_xp=question.points_value,
+            reward_item=None
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting next question: {e}")
         raise HTTPException(
@@ -111,20 +112,41 @@ async def get_next_question(
         )
 
 
-@router.get("/random/{discipline}")
+@router.get("/random/{area}")
 async def get_random_question(
-    discipline: str,
-    difficulty: Optional[int] = Query(None, ge=1, le=5, description="Filter by difficulty"),
+    area: str,
+    difficulty: Optional[str] = Query(None, description="Filter by difficulty"),
+    topic: Optional[str] = Query(None, description="Filter by topic"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Obtener una pregunta aleatoria de una disciplina específica"""
+    """Obtener una pregunta aleatoria de un área específica"""
     try:
+        # Validar que el área sea válida (opcional, usando lista hardcoded)
+        valid_areas = ["matematicas", "lectura_critica", "ciencias_naturales", "sociales_ciudadanas", "ingles"]
+        if area not in valid_areas:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid area: {area}"
+            )
+        
         # Construir query
-        query = select(Question).filter(Question.discipline == discipline)
+        query = select(Question).filter(
+            Question.area == area,
+            Question.is_active == True
+        )
         
         if difficulty:
+            valid_difficulties = ["principiante", "intermedio", "avanzado", "experto"]
+            if difficulty not in valid_difficulties:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid difficulty: {difficulty}"
+                )
             query = query.filter(Question.difficulty == difficulty)
+        
+        if topic:
+            query = query.filter(Question.topic == topic)
         
         result = await db.execute(
             query.order_by(func.random()).limit(1)
@@ -135,27 +157,26 @@ async def get_random_question(
         if not question:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No questions available for discipline {discipline}"
+                detail=f"No questions available for area {area}"
             )
         
-        # Convertir opciones
-        options = []
-        for option_data in question.options:
-            options.append(QuestionOption(
-                id=option_data["id"],
-                text=option_data["text"],
-                isCorrect=(option_data["id"] == question.correct_option)
-            ))
+        # Crear opciones en el formato legacy
+        options = [
+            QuestionOption(id="A", text=question.option_a, isCorrect=(question.correct_answer == "A")),
+            QuestionOption(id="B", text=question.option_b, isCorrect=(question.correct_answer == "B")),
+            QuestionOption(id="C", text=question.option_c, isCorrect=(question.correct_answer == "C")),
+            QuestionOption(id="D", text=question.option_d, isCorrect=(question.correct_answer == "D"))
+        ]
         
         return QuestionResponse(
             id=str(question.id),
-            discipline=question.discipline,
-            difficulty=question.difficulty,
+            discipline=question.area, # Changed from question.area.value to question.area
+            difficulty=["principiante", "intermedio", "avanzado", "experto"].index(question.difficulty) + 1, # Changed from question.difficulty.value to question.difficulty
             topic=question.topic,
-            question=question.question_text,
+            question=question.content,
             options=options,
-            reward_xp=question.reward_xp,
-            reward_item=question.reward_item
+            reward_xp=question.points_value,
+            reward_item=None
         )
         
     except HTTPException:
@@ -168,63 +189,19 @@ async def get_random_question(
         )
 
 
-@router.get("/search")
-async def search_questions(
-    q: str = Query(..., min_length=3, description="Search query"),
-    discipline: Optional[str] = Query(None, description="Filter by discipline"),
-    difficulty: Optional[int] = Query(None, ge=1, le=5, description="Filter by difficulty"),
-    limit: int = Query(10, ge=1, le=50, description="Number of results"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+@router.get("/redirect-to-quiz")
+async def redirect_to_quiz(
+    area: str = Query(..., description="ICFES area"),
+    current_user: User = Depends(get_current_user)
 ):
-    """Buscar preguntas por texto"""
-    try:
-        # Construir query base
-        query = select(Question)
-        
-        # Filtro de texto
-        query = query.filter(
-            Question.question_text.ilike(f"%{q}%") |
-            Question.topic.ilike(f"%{q}%")
-        )
-        
-        # Filtros opcionales
-        if discipline:
-            query = query.filter(Question.discipline == discipline)
-        
-        if difficulty:
-            query = query.filter(Question.difficulty == difficulty)
-        
-        # Limitar resultados
-        query = query.limit(limit)
-        
-        result = await db.execute(query)
-        questions = result.scalars().all()
-        
-        return [
-            QuestionResponse(
-                id=str(q.id),
-                discipline=q.discipline,
-                difficulty=q.difficulty,
-                topic=q.topic,
-                question=q.question_text,
-                options=[
-                    QuestionOption(
-                        id=opt["id"],
-                        text=opt["text"],
-                        isCorrect=(opt["id"] == q.correct_option)
-                    )
-                    for opt in q.options
-                ],
-                reward_xp=q.reward_xp,
-                reward_item=q.reward_item
-            )
-            for q in questions
-        ]
-        
-    except Exception as e:
-        logger.error(f"Error searching questions: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error searching questions"
-        ) 
+    """Endpoint para redireccionar a la nueva API de quiz"""
+    return {
+        "message": "This endpoint has been replaced by the quiz API",
+        "new_endpoints": {
+            "start_session": "/api/v1/quiz/start-session",
+            "get_questions": "/api/v1/quiz/questions",
+            "get_topics": f"/api/v1/quiz/topics/{area}",
+            "get_stats": f"/api/v1/quiz/stats/{area}"
+        },
+        "documentation": "/docs"
+    } 

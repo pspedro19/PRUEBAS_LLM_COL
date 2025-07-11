@@ -1,81 +1,58 @@
 services:
+  db:
+    container_name: mathquest-db
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mathquest_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init_new.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mathquest-network
+
+  backend:
+    container_name: mathquest-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.simple
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@mathquest-db:5432/mathquest_db
+    depends_on:
+      - db
+    networks:
+      - mathquest-network
+
   frontend:
-    build: 
+    container_name: mathquest-frontend
+    build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mathquest-frontend
+    restart: always
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-      - NEXT_PUBLIC_APP_NAME=MathQuest
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
     depends_on:
       - backend
     networks:
       - mathquest-network
 
-  backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: mathquest-backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/backend.env
-    environment:
-      - DATABASE_URL=postgresql://admin:admin123@db:5432/mathquest_db
-      - SECRET_KEY=your-super-secret-key-change-this-in-production
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-      - JWT_ALGORITHM=HS256
-      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      # LLM Configuration
-      - LLM_PROVIDER=openai
-      - OPENAI_API_KEY=your-openai-api-key
-      - OPENAI_MODEL=gpt-4
-      - MAX_TOKENS=2000
-      - TEMPERATURE=0.7
-    volumes:
-      - ./backend:/app
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - mathquest-network
-
-  db:
-    image: postgres:15-alpine
-    container_name: mathquest-db
-    ports:
-      - "5433:5432"
-    environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin123
-      - POSTGRES_DB=mathquest_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d mathquest_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - mathquest-network
-
   pgadmin:
-    image: dpage/pgadmin4
     container_name: mathquest-pgadmin
+    image: dpage/pgadmin4
+    restart: always
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@mathquest.com
-      - PGADMIN_DEFAULT_PASSWORD=admin123
-      - PGADMIN_LISTEN_PORT=5050
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:5050"
+      - "5050:80"
     depends_on:
       - db
     networks:

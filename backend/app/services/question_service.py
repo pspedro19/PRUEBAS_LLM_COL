@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.question import Question
-from app.models.response import Response
+from app.models.user_response import UserResponse
 from datetime import datetime
 import logging
 
@@ -131,12 +131,12 @@ class QuestionService:
         question_id: int,
         skip: int = 0,
         limit: int = 100
-    ) -> List[Response]:
+    ) -> List[UserResponse]:
         """Obtiene las respuestas para una pregunta específica"""
         try:
             result = await db.execute(
-                select(Response)
-                .filter(Response.question_id == question_id)
+                select(UserResponse)
+                .filter(UserResponse.question_id == question_id)
                 .offset(skip)
                 .limit(limit)
             )
