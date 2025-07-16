@@ -1,393 +1,369 @@
 'use client'
 
-import { useState } from 'react'
-import EpicStatsPanel from '@/components/EpicStatsPanel'
-import EpicRanking from '@/components/EpicRanking'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
+import EpicNavigation from '@/components/EpicNavigation'
+
+interface UserStats {
+  user_info: {
+    username: string
+    hero_class: string
+    level: number
+    experience_points: number
+    avatar_evolution_stage: number
+  }
+  academic_progress: {
+    questions_answered: number
+    correct_answers: number
+    accuracy: number
+    study_minutes: number
+    current_streak: number
+    max_streak: number
+  }
+  game_stats: {
+    current_vitality: number
+    improvement_rate: number
+    learning_style: string
+    difficulty_preference: string
+  }
+  assessments: {
+    initial_completed: boolean
+    vocational_completed: boolean
+    assigned_role: string
+  }
+}
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'ranking' | 'achievements' | 'analytics'>('overview')
+  const { user, refreshUserData } = useAuth()
+  const router = useRouter()
+  const [stats, setStats] = useState<UserStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const statsData = [
-    {
-      label: 'NIVEL',
-      value: '85',
-      maxValue: 100,
-      currentValue: 85,
-      color: '#FFD700',
-      icon: '⭐',
-      description: 'Nivel actual',
-      detail: 'Experiencia: 12,450 / 15,000 XP. ¡Casi llegas al siguiente nivel!'
-    },
-    {
-      label: 'XP TOTAL',
-      value: '12.5K',
-      maxValue: 20000,
-      currentValue: 12500,
-      color: '#39FF14',
-      icon: '⚡',
-      description: 'Experiencia total',
-      detail: 'Última ganancia: +150 XP. Mantén la racha para bonus extra.'
-    },
-    {
-      label: 'CALABOZOS',
-      value: '247',
-      maxValue: 300,
-      currentValue: 247,
-      color: '#FFA500',
-      icon: '🏰',
-      description: 'Completados',
-      detail: 'Completados: 247 / 300. 53 calabozos restantes para dominar todo.'
-    },
-    {
-      label: 'TASA ÉXITO',
-      value: '99.9%',
-      maxValue: 100,
-      currentValue: 99.9,
-      color: '#9333EA',
-      icon: '🎯',
-      description: 'Precisión',
-      detail: 'Últimas 10: 10/10 correctas. ¡Eres un hunter de élite!'
-    }
-  ]
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      try {
+        const token = localStorage.getItem('access_token')
+        if (!token) {
+          setError('No authentication token')
+          return
+        }
 
-  const rankingData = [
-    {
-      id: '1',
-      name: 'Shadow Monarch',
-      rank: 'S',
-      level: 95,
-      xp: 18500,
-      winRate: 99.5,
-      streak: 15,
-      avatar: '👑',
-      isCurrentUser: false,
-      achievements: ['Primer Lugar Global', '1000 Ejercicios', 'Racha de 30 días']
-    },
-    {
-      id: '2',
-      name: 'Math Warrior',
-      rank: 'S',
-      level: 92,
-      xp: 17800,
-      winRate: 98.2,
-      streak: 12,
-      avatar: '⚔️',
-      isCurrentUser: false,
-      achievements: ['Segundo Lugar', '500 Ejercicios', 'Precisión Perfecta']
-    },
-    {
-      id: '3',
-      name: 'Tú',
-      rank: 'A',
-      level: 85,
-      xp: 12500,
-      winRate: 99.9,
-      streak: 8,
-      avatar: '🎯',
-      isCurrentUser: true,
-      achievements: ['Top 10 Global', '200 Ejercicios', 'Racha de 7 días']
-    },
-    {
-      id: '4',
-      name: 'Calculus King',
-      rank: 'A',
-      level: 83,
-      xp: 11800,
-      winRate: 96.8,
-      streak: 6,
-      avatar: '∫',
-      isCurrentUser: false,
-      achievements: ['Especialista en Cálculo', '150 Ejercicios']
-    },
-    {
-      id: '5',
-      name: 'Geometry Master',
-      rank: 'B',
-      level: 78,
-      xp: 10200,
-      winRate: 94.5,
-      streak: 4,
-      avatar: '🔺',
-      isCurrentUser: false,
-      achievements: ['Especialista en Geometría', '100 Ejercicios']
-    }
-  ]
+        const response = await fetch('/api/auth/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
 
-  const achievements = [
-    {
-      id: 'first-win',
-      title: 'Primera Victoria',
-      description: 'Completa tu primer ejercicio',
-      icon: '🎉',
-      unlocked: true,
-      date: '2024-01-15',
-      rarity: 'common'
-    },
-    {
-      id: 'streak-7',
-      title: 'Racha de 7 Días',
-      description: 'Practica durante 7 días consecutivos',
-      icon: '🔥',
-      unlocked: true,
-      date: '2024-01-22',
-      rarity: 'uncommon'
-    },
-    {
-      id: 'perfect-score',
-      title: 'Puntuación Perfecta',
-      description: 'Obtén 100% en un calabozo',
-      icon: '💯',
-      unlocked: true,
-      date: '2024-01-25',
-      rarity: 'rare'
-    },
-    {
-      id: 'level-50',
-      title: 'Nivel 50',
-      description: 'Alcanza el nivel 50',
-      icon: '⭐',
-      unlocked: true,
-      date: '2024-02-01',
-      rarity: 'epic'
-    },
-    {
-      id: 's-rank',
-      title: 'S-Rank Hunter',
-      description: 'Alcanza el rango S',
-      icon: '👑',
-      unlocked: false,
-      date: null,
-      rarity: 'legendary'
-    }
-  ]
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case 'common': return '#FFFFFF'
-      case 'uncommon': return '#00FF00'
-      case 'rare': return '#0080FF'
-      case 'epic': return '#AA00FF'
-      case 'legendary': return '#FF8800'
-      case 'mythical': return '#FF0044'
-      default: return '#666666'
+        const data = await response.json()
+        setStats(data)
+      } catch (error) {
+        console.error('Error fetching user stats:', error)
+        setError('Error loading user data')
+      } finally {
+        setLoading(false)
+      }
     }
+
+    if (user) {
+      fetchUserStats()
+    }
+  }, [user])
+
+  const handleRetakeAssessment = () => {
+    router.push('/onboarding/welcome')
   }
 
-  return (
-    <div className="min-h-screen bg-abyss text-neonSystem pt-20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="epic-title text-4xl mb-4 text-levelUp">HUNTER PROFILE</h1>
-          <p className="system-text text-lg text-neonSystem/80">
-            Tu progreso y estadísticas en el mundo de MathQuest
-          </p>
+  const handleStartAssessments = () => {
+    router.push('/onboarding/welcome')
+  }
+
+  const getHeroClassInfo = (heroClass: string) => {
+    const classes: Record<string, {name: string, color: string, description: string}> = {
+      'F': { name: 'Novato F', color: 'text-gray-400', description: 'Iniciando la aventura' },
+      'E': { name: 'Bronce E', color: 'text-orange-600', description: 'Aprendiz dedicado' },
+      'D': { name: 'Bronce D', color: 'text-orange-500', description: 'Guerrero en formación' },
+      'C': { name: 'Plata C', color: 'text-gray-300', description: 'Combatiente competente' },
+      'B': { name: 'Plata B', color: 'text-gray-200', description: 'Veterano experimentado' },
+      'A': { name: 'Oro A', color: 'text-yellow-400', description: 'Maestro estratega' },
+      'S': { name: 'Platino S', color: 'text-cyan-400', description: 'Elite legendario' },
+      'S+': { name: 'Diamante S+', color: 'text-purple-400', description: 'Leyenda absoluta' }
+    }
+    return classes[heroClass] || classes['F']
+  }
+
+  const getRoleInfo = (role: string) => {
+    const roles: Record<string, {name: string, icon: string, description: string}> = {
+      'TANK': { name: 'Tanque', icon: '🛡️', description: 'Defensor resiliente' },
+      'DPS': { name: 'Atacante', icon: '⚔️', description: 'Daño explosivo' },
+      'SUPPORT': { name: 'Soporte', icon: '💫', description: 'Apoyo estratégico' },
+      'SPECIALIST': { name: 'Especialista', icon: '🎯', description: 'Experto técnico' }
+    }
+    return roles[role] || { name: 'Sin asignar', icon: '❓', description: 'Complete la encuesta' }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-abyss text-neonSystem flex items-center justify-center">
+        <div className="epic-card p-8 text-center">
+          <div className="animate-pulse text-4xl mb-4">⚡</div>
+          <p className="text-neonSystem">Loading your epic profile...</p>
         </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex space-x-1 mb-8 bg-dungeon/50 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'overview'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">📊 VISTA GENERAL</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('ranking')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'ranking'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">🏆 RANKING</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('achievements')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'achievements'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">🏅 LOGROS</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'analytics'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">📈 ANALÍTICAS</span>
-          </button>
-        </div>
-
-        {/* Content */}
-        {activeTab === 'overview' && (
-          <div className="space-y-8">
-            {/* Stats Panel */}
-            <EpicStatsPanel stats={statsData} />
-            
-            {/* Recent Activity */}
-            <div className="epic-card p-6">
-              <h3 className="epic-title text-2xl mb-6 text-levelUp">ACTIVIDAD RECIENTE</h3>
-              <div className="space-y-4">
-                {[
-                  { action: 'Completaste un calabozo de Álgebra', time: 'Hace 2 horas', xp: '+150 XP' },
-                  { action: 'Mejoraste tu habilidad de Geometría', time: 'Hace 1 día', xp: '+75 XP' },
-                  { action: 'Alcanzaste el nivel 85', time: 'Hace 2 días', xp: '+200 XP' },
-                  { action: 'Completaste la misión diaria', time: 'Hace 3 días', xp: '+100 XP' }
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-dungeon/30 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-neonSystem rounded-full"></div>
-                      <div>
-                        <p className="system-text text-neonSystem">{activity.action}</p>
-                        <p className="system-text text-sm text-neonSystem/60">{activity.time}</p>
-                      </div>
-                    </div>
-                    <span className="system-text text-sm text-neonGreen font-semibold">{activity.xp}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'ranking' && (
-          <EpicRanking players={rankingData} />
-        )}
-
-        {activeTab === 'achievements' && (
-          <div className="epic-card p-6">
-            <h3 className="epic-title text-2xl mb-6 text-levelUp">LOGROS Y CONQUISTAS</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {achievements.map((achievement) => (
-                <div
-                  key={achievement.id}
-                  className={`epic-card p-4 text-center transition-all duration-300 ${
-                    achievement.unlocked 
-                      ? 'border-2' 
-                      : 'border border-neonSystem/20 opacity-60'
-                  }`}
-                  style={{
-                    borderColor: achievement.unlocked ? getRarityColor(achievement.rarity) : undefined
-                  }}
-                >
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl">
-                    {achievement.icon}
-                  </div>
-                  <h4 className="epic-title text-lg mb-2 text-neonSystem">
-                    {achievement.title}
-                  </h4>
-                  <p className="system-text text-sm text-neonSystem/70 mb-3">
-                    {achievement.description}
-                  </p>
-                  {achievement.unlocked ? (
-                    <div>
-                      <p className="system-text text-xs text-neonGreen mb-2">
-                        Desbloqueado el {achievement.date}
-                      </p>
-                      <span 
-                        className="inline-block px-2 py-1 rounded text-xs font-semibold"
-                        style={{
-                          backgroundColor: getRarityColor(achievement.rarity) + '20',
-                          color: getRarityColor(achievement.rarity)
-                        }}
-                      >
-                        {achievement.rarity.toUpperCase()}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="system-text text-xs text-neonSystem/50">
-                      No desbloqueado
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'analytics' && (
-          <div className="epic-card p-6">
-            <h3 className="epic-title text-2xl mb-6 text-levelUp">ANALÍTICAS DE APRENDIZAJE</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Performance by Area */}
-              <div className="epic-card p-4">
-                <h4 className="epic-title text-lg mb-4 text-neonSystem">Rendimiento por Área</h4>
-                <div className="space-y-3">
-                  {[
-                    { area: 'Álgebra', accuracy: 95, problems: 45 },
-                    { area: 'Geometría', accuracy: 88, problems: 38 },
-                    { area: 'Trigonometría', accuracy: 92, problems: 32 },
-                    { area: 'Estadística', accuracy: 85, problems: 28 }
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="system-text text-sm text-neonSystem">{item.area}</span>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-20 h-2 bg-dungeon rounded-full">
-                          <div 
-                            className="h-2 rounded-full transition-all duration-500"
-                            style={{
-                              width: `${item.accuracy}%`,
-                              backgroundColor: item.accuracy >= 90 ? '#39FF14' : 
-                                               item.accuracy >= 80 ? '#FFD700' : '#FF6B6B'
-                            }}
-                          ></div>
-                        </div>
-                        <span className="system-text text-xs text-neonSystem/70">
-                          {item.accuracy}% ({item.problems})
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Study Time */}
-              <div className="epic-card p-4">
-                <h4 className="epic-title text-lg mb-4 text-neonSystem">Tiempo de Estudio</h4>
-                <div className="space-y-3">
-                  {[
-                    { day: 'Lun', time: 45 },
-                    { day: 'Mar', time: 60 },
-                    { day: 'Mié', time: 30 },
-                    { day: 'Jue', time: 75 },
-                    { day: 'Vie', time: 50 },
-                    { day: 'Sáb', time: 90 },
-                    { day: 'Dom', time: 40 }
-                  ].map((item, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="system-text text-sm text-neonSystem">{item.day}</span>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-24 h-2 bg-dungeon rounded-full">
-                          <div 
-                            className="h-2 rounded-full transition-all duration-500"
-                            style={{
-                              width: `${(item.time / 90) * 100}%`,
-                              backgroundColor: '#00D9FF'
-                            }}
-                          ></div>
-                        </div>
-                        <span className="system-text text-xs text-neonSystem/70">
-                          {item.time}min
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="min-h-screen bg-abyss text-neonSystem flex items-center justify-center">
+        <div className="epic-card p-8 text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-red-400">{error || 'Failed to load profile'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const heroInfo = getHeroClassInfo(stats.user_info.hero_class)
+  const roleInfo = getRoleInfo(stats.assessments.assigned_role)
+  const nextLevelXP = stats.user_info.level * 1000 // Simplified XP calculation
+  const xpProgress = (stats.user_info.experience_points % nextLevelXP) / nextLevelXP * 100
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-abyss via-dungeon to-abyss">
+      {/* Epic Background Effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-neonSystem rounded-full animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-neonCyan rounded-full animate-pulse delay-300"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-3 h-3 bg-neonSystem rounded-full animate-pulse delay-700"></div>
+      </div>
+
+      <div className="relative z-10 p-4 pb-24">
+        {/* Hero Header */}
+        <div className="epic-card p-6 neon-border mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-neonSystem">
+                {user?.full_name || stats.user_info.username}
+              </h1>
+              <p className="text-neonSystem/70">@{stats.user_info.username}</p>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold ${heroInfo.color}`}>
+                {heroInfo.name}
+              </div>
+              <p className="text-neonSystem/70 text-sm">{heroInfo.description}</p>
+            </div>
+          </div>
+
+          {/* Level and XP */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-neonSystem font-medium">Level {stats.user_info.level}</span>
+              <span className="text-neonSystem/70 text-sm">
+                {stats.user_info.experience_points} XP
+              </span>
+            </div>
+            <div className="w-full bg-dungeon/50 rounded-full h-3">
+              <div 
+                className="bg-gradient-system h-3 rounded-full transition-all duration-300"
+                style={{ width: `${xpProgress}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Role and Vitality */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-3 bg-dungeon/30 rounded-lg">
+              <div className="text-2xl mb-1">{roleInfo.icon}</div>
+              <div className="text-neonCyan font-medium">{roleInfo.name}</div>
+              <div className="text-neonSystem/60 text-xs">{roleInfo.description}</div>
+            </div>
+            <div className="text-center p-3 bg-dungeon/30 rounded-lg">
+              <div className="text-2xl mb-1">💖</div>
+              <div className="text-neonSystem font-medium">{stats.game_stats.current_vitality}/100</div>
+              <div className="text-neonSystem/60 text-xs">Vitalidad</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Academic Progress */}
+        <div className="epic-card p-6 neon-border mb-6">
+          <h2 className="text-xl font-bold text-neonSystem mb-4">📊 Progreso Académico</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 bg-dungeon/30 rounded-lg">
+              <div className="text-3xl font-bold text-neonCyan">
+                {stats.academic_progress.questions_answered}
+              </div>
+              <div className="text-neonSystem/70 text-sm">Preguntas</div>
+            </div>
+            <div className="text-center p-4 bg-dungeon/30 rounded-lg">
+              <div className="text-3xl font-bold text-green-400">
+                {stats.academic_progress.accuracy.toFixed(1)}%
+              </div>
+              <div className="text-neonSystem/70 text-sm">Precisión</div>
+            </div>
+            <div className="text-center p-4 bg-dungeon/30 rounded-lg">
+              <div className="text-3xl font-bold text-yellow-400">
+                {stats.academic_progress.current_streak}
+              </div>
+              <div className="text-neonSystem/70 text-sm">Racha Actual</div>
+            </div>
+            <div className="text-center p-4 bg-dungeon/30 rounded-lg">
+              <div className="text-3xl font-bold text-purple-400">
+                {Math.floor(stats.academic_progress.study_minutes / 60)}h
+              </div>
+              <div className="text-neonSystem/70 text-sm">Estudio</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Assessment Status */}
+        <div className="epic-card p-6 neon-border mb-6">
+          <h2 className="text-xl font-bold text-neonSystem mb-4">🎯 Estado de Evaluaciones</h2>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <div className="text-neonSystem font-medium">Evaluación Inicial</div>
+                  <div className="text-neonSystem/60 text-sm">Determina tu nivel base</div>
+                </div>
+              </div>
+              <div className={`px-3 py-1 rounded text-sm font-medium ${
+                stats.assessments.initial_completed 
+                  ? 'bg-green-900/50 text-green-300' 
+                  : 'bg-yellow-900/50 text-yellow-300'
+              }`}>
+                {stats.assessments.initial_completed ? '✅ Completado' : '⏳ Pendiente'}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🧠</span>
+                <div>
+                  <div className="text-neonSystem font-medium">Test Vocacional</div>
+                  <div className="text-neonSystem/60 text-sm">
+                    {stats.assessments.vocational_completed 
+                      ? `Rol actual: ${roleInfo.icon} ${roleInfo.name}` 
+                      : 'Descubre tu rol ideal'
+                    }
+                  </div>
+                </div>
+              </div>
+              <div className={`px-3 py-1 rounded text-sm font-medium ${
+                stats.assessments.vocational_completed 
+                  ? 'bg-green-900/50 text-green-300' 
+                  : 'bg-yellow-900/50 text-yellow-300'
+              }`}>
+                {stats.assessments.vocational_completed ? '✅ Completado' : '⏳ Pendiente'}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          {(!stats.assessments.initial_completed || !stats.assessments.vocational_completed) ? (
+            <div className="mt-4 p-4 bg-gradient-to-r from-neonCyan/20 to-neonSystem/20 rounded-lg border border-neonCyan/30">
+              <div className="flex items-center space-x-3 mb-2">
+                <span className="text-2xl">⚡</span>
+                <div className="text-neonCyan font-medium">¡Completa tu perfil épico!</div>
+              </div>
+              <p className="text-neonSystem/80 text-sm mb-3">
+                Realiza las evaluaciones para desbloquear todo tu potencial y obtener recomendaciones personalizadas.
+              </p>
+              <button 
+                onClick={handleStartAssessments}
+                className="w-full py-2 bg-gradient-system text-abyss font-bold rounded-lg hover:shadow-effect transition-all duration-300"
+              >
+                Comenzar Evaluaciones 🚀
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {/* Retake Assessment Option */}
+              <div className="p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-500/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <span className="text-2xl">🔄</span>
+                      <div className="text-purple-300 font-medium">¿Quieres cambiar tu rol?</div>
+                    </div>
+                    <p className="text-neonSystem/80 text-sm">
+                      Puedes repetir el test vocacional en cualquier momento para explorar otros roles de batalla.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleRetakeAssessment}
+                    className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-lg hover:shadow-effect transition-all duration-300 flex-shrink-0"
+                  >
+                    Repetir Test 🎯
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Role Summary */}
+              <div className="p-4 bg-gradient-to-r from-dungeon/50 to-dungeon/30 rounded-lg border border-neonSystem/20">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-system rounded-full flex items-center justify-center">
+                    <span className="text-2xl">{roleInfo.icon}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-neonSystem font-medium">Tu Rol Actual: {roleInfo.name}</div>
+                    <div className="text-neonSystem/70 text-sm">{roleInfo.description}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-neonCyan text-sm font-medium">Activo</div>
+                    <div className="text-neonSystem/60 text-xs">Rol de batalla</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Game Stats */}
+        <div className="epic-card p-6 neon-border">
+          <h2 className="text-xl font-bold text-neonSystem mb-4">🎮 Estadísticas de Juego</h2>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <span className="text-neonSystem">Estilo de Aprendizaje</span>
+              <span className="text-neonCyan font-medium">
+                {stats.game_stats.learning_style || 'No determinado'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <span className="text-neonSystem">Dificultad Preferida</span>
+              <span className="text-neonCyan font-medium capitalize">
+                {stats.game_stats.difficulty_preference}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <span className="text-neonSystem">Tasa de Mejora</span>
+              <span className="text-green-400 font-medium">
+                {stats.game_stats.improvement_rate.toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-dungeon/30 rounded-lg">
+              <span className="text-neonSystem">Evolución del Avatar</span>
+              <span className="text-purple-400 font-medium">
+                Etapa {stats.user_info.avatar_evolution_stage}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <EpicNavigation />
     </div>
   )
 } 

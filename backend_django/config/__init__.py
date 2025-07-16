@@ -1,0 +1,1 @@
+# Configuración Django del proyecto Ciudadela del Conocimiento ICFES 

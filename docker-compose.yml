@@ -11,19 +11,19 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init_new.sql:/docker-entrypoint-initdb.d/init.sql
+      # - ./database/init_new.sql:/docker-entrypoint-initdb.d/init.sql  # Comentado para usar Django migrations
     networks:
       - mathquest-network
 
   backend:
     container_name: mathquest-backend
     build:
-      context: ./backend
-      dockerfile: Dockerfile.simple
+      context: ./backend_django
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@mathquest-db:5432/mathquest_db
+      - DATABASE_URL=postgresql://postgres:postgres@mathquest-db:5432/mathquest_db
     depends_on:
       - db
     networks:
