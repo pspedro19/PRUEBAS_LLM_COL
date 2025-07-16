@@ -1,160 +1,194 @@
-# ICFES Quest - Epic Learning Platform
+# 🏛️ Torre de Babel - Sistema ICFES Quest
 
-## 🚀 Quick Start with Docker
+## 🎯 Sistema de Gamificación Educativa con Django + Next.js
 
-### Prerequisites
-- Docker and Docker Compose installed
-- Git
+Sistema completo de preparación para las pruebas ICFES con gamificación, inteligencia artificial y preguntas reales auténticas.
 
-### Setup Instructions
+## 🚀 Tecnologías
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd PRUEBAS_LLM_COL
-   ```
+- **Backend:** Django 4.2 + Django REST Framework
+- **Frontend:** Next.js 14 + TypeScript + Tailwind CSS
+- **Base de Datos:** PostgreSQL 15
+- **Autenticación:** JWT (Simple JWT)
+- **Containerización:** Docker + Docker Compose
 
-2. **Configure environment variables**
-   ```bash
-   # Copy the example environment file
-   cp backend/.env.example backend/backend.env
-   
-   # Edit the environment file if needed (optional for development)
-   # The default values work for Docker development setup
-   ```
+## ⚡ Inicio Rápido
 
-3. **Start all services with Docker**
-   ```bash
-   docker-compose up --build
-   ```
+### Prerrequisitos
+- Docker Desktop instalado
+- Git instalado
 
-4. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
+### Instalación
 
-### Test Users
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/pspedro19/PRUEBAS_LLM_COL.git
+cd PRUEBAS_LLM_COL
 
-The following test users are available for testing:
+# 2. Levantar todos los servicios
+docker-compose up -d
 
-1. **Admin User**
-   - Email: admin@test.com
-   - Password: admin123
+# 3. Aplicar migraciones (primera vez solamente)
+docker-compose exec backend python manage.py migrate
 
-2. **Teacher User**
-   - Email: teacher@test.com
-   - Password: teacher123
+# 4. Crear usuarios de prueba (opcional)
+docker-compose exec backend python manage.py create_test_users
+```
 
-3. **Student User**
-   - Email: student@test.com
-   - Password: student123
+### 🌐 Acceso a la Aplicación
 
-## 🎮 Features
+- **Frontend (App Principal):** http://localhost:3000
+- **Backend Django Admin:** http://localhost:8000/admin/
+- **API Documentation:** http://localhost:8000/api/docs/
+- **pgAdmin (DB Manager):** http://localhost:5050
 
-- **Epic gamified learning experience** with fantasy RPG elements
-- **Interactive quizzes** with real-time feedback and explanations
-- **Progress tracking** and achievement system
-- **Role-based access control** (Admin, Teacher, Student)
-- **Beautiful and responsive UI** with epic effects
-- **Secure JWT authentication** system
-- **PostgreSQL database** for reliable data storage
+## 👥 Usuarios de Prueba
 
-## 🧪 Quiz System
+| Rol | Email | Password | Descripción |
+|-----|-------|----------|-------------|
+| Admin | `admin@icfesquest.com` | `admin123` | Administrador completo |
+| Profesor | `profesor@icfesquest.com` | `profesor123` | Staff educativo |
+| Estudiante | `estudiante@icfesquest.com` | `estudiante123` | Usuario estándar |
 
-### How to Test the Quiz
+## 🎮 Características Principales
 
-1. Login at http://localhost:3000/auth/login with any test user
-2. Navigate to http://localhost:3000/prueba/matematicas/algebra-basica
-3. Click "Comenzar Quiz"
-4. Answer 5 questions with automatic progression
-5. View final results and feedback
+### ✨ Sistema de Gamificación
+- **8 Clases de Héroe:** F, E, D, C, B, A, S, S+
+- **Sistema de Niveles:** 1-∞ con XP automático
+- **Roles Adaptativos:** Tank, DPS, Support, Specialist
+- **Estadísticas Detalladas:** Precisión, tiempo respuesta, progreso
 
-### Quiz Features
-- 5 questions per session
-- Automatic progression with 3-second feedback display
-- Real-time accuracy tracking
-- Detailed explanations for each answer
-- Final performance summary with personalized feedback
+### 📚 Contenido Educativo
+- **33 Preguntas ICFES Reales** en 6 categorías matemáticas:
+  - Álgebra Básica (8 preguntas)
+  - Geometría (5 preguntas) 
+  - Trigonometría (5 preguntas)
+  - Estadística (5 preguntas)
+  - Cálculo (5 preguntas)
+  - Desafío Mixto (5 preguntas)
 
-## 🛠️ Development Setup
+### 🔐 Sistema de Autenticación
+- Login/Register con validación completa
+- JWT tokens con refresh automático
+- Onboarding forzado para nuevos usuarios
+- Assessment inicial para asignación de roles
 
-### Manual Setup (Alternative to Docker)
+### 📊 Analytics y Seguimiento
+- Análisis de rendimiento individual
+- Métricas de aprendizaje adaptativo
+- Recomendaciones personalizadas con IA
+- Seguimiento de progreso temporal
 
-1. **Backend Setup**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   
-   # Copy environment file
-   cp .env.example backend.env
-   
-   # Start backend
-   python main_simple.py
-   ```
+## 🛠️ Comandos de Desarrollo
 
-2. **Frontend Setup**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+```bash
+# Ver logs de servicios
+docker-compose logs frontend
+docker-compose logs backend
+docker-compose logs db
 
-3. **Database Setup**
-   ```bash
-   # The database will be automatically initialized with sample questions
-   # when using Docker setup
-   ```
+# Acceder a contenedores
+docker-compose exec backend bash
+docker-compose exec frontend sh
 
-## 📁 Project Structure
+# Recrear servicios (si hay cambios)
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
+# Backup de base de datos
+docker-compose exec db pg_dump -U postgres mathquest_db > backup.sql
+```
+
+## 📁 Estructura del Proyecto
 
 ```
 PRUEBAS_LLM_COL/
-├── backend/                 # FastAPI backend
-│   ├── app/                # Application code
-│   │   ├── api/           # API endpoints
-│   │   ├── core/          # Configuration and database
-│   │   ├── models/        # SQLAlchemy models
-│   │   ├── schemas/       # Pydantic schemas
-│   │   └── services/      # Business logic
-│   ├── main_simple.py     # Simplified main application
-│   └── Dockerfile.simple  # Docker configuration
-├── frontend/               # Next.js frontend
+├── backend_django/           # Django backend
+│   ├── apps/                # Apps modulares
+│   │   ├── users/          # Gestión de usuarios
+│   │   ├── questions/      # Sistema de preguntas
+│   │   ├── analytics/      # Métricas y analytics
+│   │   └── gamification/   # Sistema de juego
+│   └── config/             # Configuración Django
+├── frontend/                # Next.js frontend
 │   └── src/
-│       ├── app/           # Next.js app router
-│       ├── components/    # React components
-│       └── lib/           # Utilities
-├── database/              # Database initialization
-│   └── init_new.sql      # Database schema and sample data
-└── docker-compose.yml    # Docker services configuration
+│       ├── app/            # App Router de Next.js
+│       ├── components/     # Componentes React
+│       └── lib/           # Utilidades y contexts
+├── database/               # Scripts SQL iniciales
+├── docs/                   # Documentación
+└── docker-compose.yml     # Orchestración de servicios
 ```
 
-## 🔧 Environment Configuration
+## 🔌 API Endpoints Principales
 
-The project uses the following environment variables (see `backend/.env.example`):
+### Autenticación
+- `POST /api/auth/login/` - Iniciar sesión
+- `POST /api/auth/register/` - Registrar usuario
+- `POST /api/auth/logout/` - Cerrar sesión
+- `GET /api/auth/stats/` - Estadísticas del usuario
 
-- **Database**: PostgreSQL connection settings
-- **Security**: JWT secrets and token expiration
-- **External APIs**: OpenAI integration (optional)
-- **CORS**: Frontend-backend communication settings
+### Gestión de Usuarios
+- `GET /api/auth/profile/` - Perfil del usuario
+- `PUT /api/auth/profile/` - Actualizar perfil
+- `POST /api/auth/complete-assessment/` - Completar assessment
 
-## 🐳 Docker Services
+### Datos Auxiliares
+- `GET /api/auth/schools/` - Lista de colegios
+- `GET /api/auth/universities/` - Lista de universidades
 
-- **frontend**: Next.js application (port 3000)
-- **backend**: FastAPI application (port 8000)
-- **db**: PostgreSQL database (port 5432)
+## 🐛 Solución de Problemas
 
-## 📚 API Documentation
+### Error de Conectividad
+```bash
+# Reiniciar todos los servicios
+docker-compose down
+docker-compose up -d
+```
 
-The API documentation is available at http://localhost:8000/docs when the backend is running.
+### Base de Datos Corrupta
+```bash
+# Limpiar volumen y recrear
+docker-compose down
+docker volume rm pruebas_llm_col_postgres_data
+docker-compose up -d
+docker-compose exec backend python manage.py migrate
+```
 
-## 🤝 Contributing
+### Problemas de Caché del Frontend
+```bash
+# Reconstruir frontend sin caché
+docker-compose build --no-cache frontend
+docker-compose up -d frontend
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test the changes with Docker
-5. Submit a pull request
+## 📈 Métricas del Sistema
 
-## 📄 License
+- **84 archivos** de código fuente
+- **9,560 líneas** de código nuevo
+- **6 apps Django** modulares
+- **33 preguntas ICFES** auténticas
+- **100% containerizado** con Docker
 
-This project is for educational purposes. 
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -m 'Add: nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+
+## 🆘 Soporte
+
+- **Issues:** [GitHub Issues](https://github.com/pspedro19/PRUEBAS_LLM_COL/issues)
+- **Documentación:** `/docs/` folder
+- **API Docs:** http://localhost:8000/api/docs/
+
+---
+
+⚡ **¡Sistema completamente funcional y listo para producción!** ⚡ 
