@@ -185,13 +185,16 @@ INSERT INTO users (username, email, password_hash, display_name, avatar_url, lev
 ON CONFLICT (email) DO NOTHING;
 
 -- Insertar preguntas de matemáticas para cada calabozo
--- ÁLGEBRA BÁSICA
+-- ÁLGEBRA BÁSICA - PREGUNTAS REALES TIPO ICFES
 INSERT INTO questions (title, content, explanation, option_a, option_b, option_c, option_d, correct_answer, area, topic, subtopic, difficulty, points_value) VALUES
-    ('Ecuación lineal básica', '¿Cuál es el valor de x en la ecuación 2x + 5 = 15?', 'Para resolver: 2x + 5 = 15, restamos 5 de ambos lados: 2x = 10, luego dividimos por 2: x = 5', 'x = 5', 'x = 10', 'x = 7.5', 'x = 20', 'A', 'matematicas', 'algebra_basica', 'ecuaciones_lineales', 'principiante', 10),
-    ('Sistema de ecuaciones 2x2', 'En el sistema x + y = 8 y x - y = 2, ¿cuál es el valor de x?', 'Sumando las ecuaciones: (x + y) + (x - y) = 8 + 2, entonces 2x = 10, por lo tanto x = 5', 'x = 3', 'x = 5', 'x = 6', 'x = 4', 'B', 'matematicas', 'algebra_basica', 'sistemas_ecuaciones', 'intermedio', 15),
-    ('Factorización', '¿Cuál es la factorización de x² - 9?', 'Es una diferencia de cuadrados: x² - 9 = x² - 3² = (x + 3)(x - 3)', '(x + 3)(x - 3)', '(x - 3)²', '(x + 3)²', 'x(x - 9)', 'A', 'matematicas', 'algebra_basica', 'factorizacion', 'intermedio', 15),
-    ('Ecuación cuadrática', '¿Cuáles son las raíces de x² - 5x + 6 = 0?', 'Factorizando: x² - 5x + 6 = (x - 2)(x - 3) = 0, entonces x = 2 o x = 3', 'x = 2, x = 3', 'x = 1, x = 6', 'x = -2, x = -3', 'x = 0, x = 5', 'A', 'matematicas', 'algebra_basica', 'ecuaciones_cuadraticas', 'avanzado', 20),
-    ('Desigualdades', '¿Cuál es la solución de 3x - 7 > 8?', 'Resolviendo: 3x - 7 > 8, entonces 3x > 15, por lo tanto x > 5', 'x > 5', 'x < 5', 'x > 15', 'x < 1', 'A', 'matematicas', 'algebra_basica', 'desigualdades', 'intermedio', 15);
+    ('Ecuación lineal básica', 'Si 2x - 3 = 7, entonces el valor de x es:', '2x - 3 = 7 → 2x = 7 + 3 → 2x = 10 → x = 5', '2', '5', '4', '10', 'B', 'matematicas', 'algebra_basica', 'ecuaciones_lineales', 'principiante', 15),
+    ('Sistema de ecuaciones simples', 'En un teatro hay 240 asientos distribuidos en 12 filas. Si todas las filas tienen el mismo número de asientos, ¿cuántos asientos hay por fila?', 'Dividimos el total de asientos entre el número de filas: 240 ÷ 12 = 20 asientos por fila', '18', '20', '22', '24', 'B', 'matematicas', 'algebra_basica', 'problemas_aplicacion', 'principiante', 12),
+    ('Factorización básica', 'La expresión x² - 9 es equivalente a:', 'x² - 9 es una diferencia de cuadrados: a² - b² = (a-b)(a+b), entonces x² - 3² = (x-3)(x+3)', '(x - 3)(x - 3)', '(x + 3)(x + 3)', '(x - 3)(x + 3)', 'x(x - 9)', 'C', 'matematicas', 'algebra_basica', 'factorizacion', 'principiante', 18),
+    ('Proporcionalidad directa', 'Si 5 cuadernos cuestan $15.000, ¿cuánto costarán 8 cuadernos del mismo tipo?', 'Cada cuaderno cuesta $15.000 ÷ 5 = $3.000. Entonces 8 cuadernos cuestan 8 × $3.000 = $24.000', '$18.000', '$20.000', '$24.000', '$25.000', 'C', 'matematicas', 'algebra_basica', 'proporciones', 'principiante', 14),
+    ('Desigualdades lineales', '¿Cuál de los siguientes valores de x satisface la desigualdad 2x + 1 > 9?', '2x + 1 > 9 → 2x > 8 → x > 4. Solo x = 5 satisface esta condición', 'x = 3', 'x = 4', 'x = 5', 'x = 2', 'C', 'matematicas', 'algebra_basica', 'desigualdades', 'principiante', 16),
+    ('Gráfica de función lineal', 'IMAGEN: Una gráfica muestra una línea recta que pasa por los puntos (0, 2) y (4, 6). ¿Cuál es la ecuación de esta recta?', 'La pendiente es m = (6-2)/(4-0) = 4/4 = 1. La intersección con y es 2. Por tanto: y = x + 2', 'y = x + 2', 'y = 2x + 2', 'y = x + 4', 'y = 4x + 2', 'A', 'matematicas', 'algebra_basica', 'funciones_lineales', 'principiante', 20),
+    ('Expresiones algebraicas', 'Si a = 3 y b = -2, el valor de la expresión 2a - 3b + 1 es:', 'Sustituyendo: 2(3) - 3(-2) + 1 = 6 + 6 + 1 = 13', '11', '13', '9', '7', 'B', 'matematicas', 'algebra_basica', 'evaluacion_expresiones', 'principiante', 12),
+    ('Ecuación cuadrática simple', 'La ecuación x² = 16 tiene como soluciones:', 'x² = 16 implica x = ±√16 = ±4, por tanto x = 4 o x = -4', 'x = 4 únicamente', 'x = 4 y x = -4', 'x = 8 únicamente', 'x = 2 y x = -2', 'B', 'matematicas', 'algebra_basica', 'ecuaciones_cuadraticas', 'principiante', 18);
 
 -- GEOMETRÍA
 INSERT INTO questions (title, content, explanation, option_a, option_b, option_c, option_d, correct_answer, area, topic, subtopic, difficulty, points_value) VALUES

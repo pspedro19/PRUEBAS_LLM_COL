@@ -106,6 +106,13 @@ class UserResponse(Base):
     answered_at = Column(DateTime, default=datetime.utcnow)
 
 # Pydantic models
+class UserRegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    first_name: Optional[str] = ""
+    last_name: Optional[str] = ""
+
 class StartQuizRequest(BaseModel):
     area: str
     difficulty: Optional[str] = None
@@ -128,6 +135,9 @@ async def get_db():
 # Funciones de autenticación
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -201,9 +211,15 @@ async def login(
         )
         
         return {
-            "access_token": access_token,
-            "refresh_token": access_token,  # Mismo token por simplicidad
-            "token_type": "bearer"
+            "access": access_token,
+            "refresh": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "is_verified": True
+            }
         }
     except Exception as e:
         print(f"Login error: {e}")
@@ -211,6 +227,93 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
+
+@app.post("/api/v1/auth/register")
+async def register(
+    user_data: UserRegisterRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Register endpoint for frontend compatibility"""
+    try:
+        # Check if user exists
+        result = await db.execute(select(User).filter(User.email == user_data.email))
+        existing_user = result.scalar_one_or_none()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        new_user = User(
+            username=user_data.username if user_data.username else user_data.email.split("@")[0],
+            email=user_data.email,
+            password_hash=hashed_password,
+            display_name=f"{user_data.first_name} {user_data.last_name}".strip(),
+            is_active=True
+        )
+        
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(new_user.id)}, expires_delta=access_token_expires
+        )
+        
+        return {
+            "tokens": {
+                "access": access_token,
+                "refresh": access_token
+            },
+            "user": {
+                "id": new_user.id,
+                "email": new_user.email,
+                "username": new_user.username,
+                "is_verified": True
+            }
+        }
+    except Exception as e:
+        print(f"Register error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed"
+        )
+
+@app.get("/api/auth/stats/")
+async def get_user_stats(
+    current_user: User = Depends(get_current_user)
+):
+    """Get user stats for frontend compatibility"""
+    return {
+        "user_info": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "hero_class": "warrior",
+            "level": 1,
+            "experience_points": 0
+        },
+        "assessments": {
+            "initial_completed": True,
+            "vocational_completed": True,
+            "assigned_role": "warrior"
+        }
+    }
+
+@app.post("/api/auth/complete-assessment/")
+async def complete_assessment(
+    assessment_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Complete assessment for frontend compatibility"""
+    return {
+        "success": True,
+        "message": "Assessment completed",
+        "assigned_role": assessment_data.get("assigned_role", "warrior")
+    }
 
 @app.post("/api/quiz/start-session")
 async def start_quiz_session(

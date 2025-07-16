@@ -1,0 +1,202 @@
+{
+  "total_pages": 10,
+  "questions_found": [
+    {
+      "number": "11",
+      "page": 1,
+      "content": "M.D\nMatemáticas\n11GRADO\nCuadernillo 1\n¡Hola!\nQueremos agradecer tu participación. Antes \nde empezar a responder, es importante que \ntengas en cuenta lo siguiente:\n• Lee cada pregunta cuidadosamente \n   y elige UNA opción.\n• En este cuadernillo encuentras las \n   preguntas y la Hoja de respuestas.\n• Por favor, responde TODAS las preguntas. • Si no entiendes algo o si tienes alguna\n   inquietud sobre cómo llenar la Hoja de\n   respuestas, pídele ayuda a tu docente. \n20 N.° de preguntas:",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 2,
+      "content": "°\nUn pequeño conjunto cerrado tiene cinco casas formando un pentágono como se ve en la figura. Las casas \nestán representadas por círculos.\nEn el conjunto viven los señores Gómez, Hernández, López, Pérez y Vélez. Todas las casas del conjunto \ntienen una cantidad diferente de pisos. El señor Pérez lamenta que su casa sea considerada, según la ley, \nun edificio por tener cinco pisos, aunque también se alegra de tener la casa más alta del conjunto y no \nestar “a la sombra de los demás”. ¿Cuál es el",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "geometría"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 3,
+      "content": "°\n3La tabla muestra las relaciones de comercio, venta y compra de productos entre varios países. \nDe acuerdo con la información presentada, ¿cuál es la tabla que muestra las relaciones comerciales del país W?País\nP\nQ\nR\nSVende \nproductos a:\nP, T\nU, Q, T, R\nT, R\nP, U, T, SCompra \nproductos de:\nS, V, P, W\nV, Q\nR, V, W, Q\nS, V",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "estadística"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 4,
+      "content": "°\nLa torre de Pisa en Toscana es uno de los sitios turísticos más representativos de Italia. \nEn la tabla se relaciona la cantidad de personas que ingresó cada día durante una semana, \nsegún el tipo de entrada que pagó. \nSe pagan 17 euros de entrada y 5,5 más si se realiza reserva.\nCantidad de personas que ingresaron\nTipo de \nentrada\nSin reserva\nCon reserva300\n700300\n800500\n200700\n600300\n500300\n500700\n600Lunes Martes Miércoles Jueves Viernes Sábado Domingo\nCon respecto a la vertical, la torre se",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "trigonometría",
+        "geometría",
+        "estadística"
+      ]
+    },
+    {
+      "number": "3",
+      "page": 4,
+      "content": "Según la observación de las figuras 1, 2 y 3, puede afirmarse correctamente que el número de baldosas",
+      "has_options": false,
+      "estimated_difficulty": "básico",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 5,
+      "content": "°\n5El costo de la boleta en un cinema depende de la edad de la persona, como lo muestra la tabla.\n¿Cuál es la gráfica que representa esta función?Edad en años  (X) Costo en pesos (Y)\nDesde 0 y hasta 8",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "cálculo",
+        "estadística"
+      ]
+    },
+    {
+      "number": "5",
+      "page": 5,
+      "content": "000\nMás de 8 y hasta 16",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "7",
+      "page": 5,
+      "content": "000\nMás de 16 y hasta 56",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "6",
+      "page": 5,
+      "content": "000\nD.\nY\nX\n56 48 40 32 24 168",
+      "has_options": true,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "00010",
+      "page": 5,
+      "content": "000C.\nY\nX\n56 48 40 32 24 168",
+      "has_options": true,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "00010",
+      "page": 5,
+      "content": "000B.\nY\nX\n56 48 40 32 24 168",
+      "has_options": true,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 6,
+      "content": "°\nSe realizó una encuesta a 200 clientes de una empresa de telecomunicaciones para saber cómo califican la \ncalidad del servicio que reciben. La siguiente gráfica muestra los porcentajes de las calificaciones dadas por \nlos clientes:\n¿Cuál afirmación es verdadera acerca de los resultados de la encuesta?",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": []
+    },
+    {
+      "number": "11",
+      "page": 7,
+      "content": "°\n7Para observar los efectos de un medicamento, este se inyecta en un animal y se registra el comportamiento \nde la temperatura (ºC) en función del tiempo (horas), como lo muestra la gráfica.\n \n¿Cuál de las siguientes expresiones corresponde a la curva que describe la temperatura del animal en función  \ndel tiempo?\nt2π\n3F(t) = 2cos           + 36",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "cálculo"
+      ]
+    },
+    {
+      "number": "100",
+      "page": 7,
+      "content": "La siguiente figura está compuesta por los cuadrados P y R y el triángulo rectángulo S.\nSi el área del cuadrado R es 36 m2 y el área del cuadrado P es 64 m2, ¿cuál es el área total de la figura?",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "trigonometría",
+        "geometría"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 8,
+      "content": "°\nLa temperatura T, en grados centígrados, del motor de un camión durante los primeros 3 minutos se \ncomporta según la siguiente expresión:\nT = 3(x + 1) + 10\nDonde x es el tiempo en minutos que el motor está en funcionamiento desde que se enciende. ¿Cuál de las \nsiguientes tablas muestra correctamente algunos valores del tiempo en funcionamiento y la temperatura del motor?\nB.\nT (grados centígr ados)1 x (minutos)\n92\n273\n81\nD. x (minutos) 1\nT (grados centígr ados) 192\n373\n91",
+      "has_options": true,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra",
+        "trigonometría",
+        "estadística"
+      ]
+    },
+    {
+      "number": "11",
+      "page": 9,
+      "content": "°\n9Un agente de negocios analiza la cantidad de ventas mensuales de dos productos durante seis meses \n(ver gráfica).\nDe acuerdo con la información anterior, ¿cuál de las siguientes afirmaciones es verdadera?",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": []
+    },
+    {
+      "number": "11",
+      "page": 10,
+      "content": "°\nLa figura muestra una construcción geométrica, con sus lados etiquetados.\n¿Por qué los lados Y y W son paralelos?",
+      "has_options": false,
+      "estimated_difficulty": "intermedio",
+      "topics_detected": [
+        "álgebra"
+      ]
+    }
+  ],
+  "metadata": {
+    "file_size_mb": 7.66,
+    "areas_detected": [],
+    "question_types": []
+  },
+  "raw_text_sample": "\n--- PÁGINA 1 ---\n2023\nM111\nG11.M.D\nMatemáticas\n11GRADO\nCuadernillo 1\n¡Hola!\nQueremos agradecer tu participación. Antes \nde empezar a responder, es importante que \ntengas en cuenta lo siguiente:\n• Lee cada pregunta cuidadosamente \n   y elige UNA opción.\n• En este cuadernillo encuentras las \n   preguntas y la Hoja de respuestas.\n• Por favor, responde TODAS las preguntas. • Si no entiendes algo o si tienes alguna\n   inquietud sobre cómo llenar la Hoja de\n   respuestas, pídele ayuda a tu docente. \n20 N.° de preguntas:\n\n--- PÁGINA 2 ---\n2Matemáticas - Cuadernillo 1\nSaber 11.°\nUn pequeño conjunto cerrado tiene cinco casas formando un pentágono como se ve en la figura. Las casas \nestán representadas por círculos.\nEn el conjunto viven los señores Gómez, Hernández, López, Pérez y Vélez. Todas las casas del conjunto \ntienen una cantidad diferente de pisos. El señor Pérez lamenta que su casa sea considerada, según la ley, \nun edificio por tener cinco pisos, aunque también se alegra de tener la casa más alta del conjunto y no \nestar “a la sombra de los demás”. ¿Cuál es el total de pisos construidos en el conjunto?\nA. 9\nB. 15\nC. 20\nD. 25III\nII\nI VIV\nUn profesor les asigna a tres estudiantes tres figuras distintas, y a cada uno le pide que rote la figura recibida \n90° en el sentido en que giran las manecillas del reloj respecto al origen del sistema de coordenadas. La grá -\nfica muestra las figuras recibidas por cada estudiante (sombreadas) y la figura obtenida (en blanco).\n¿Cuáles estudiantes hicieron correctamente el trabajo asignado?\nA. I y II solamente.\nB. II y III solamente.\nC. I y III solamente.\nD. I, II y III.y\nx\n12345 -5-4-3-2-101345\n2\n-5-3-2-1\n-4\nEstudiante I-5y\nx\n012345 -5-4-3-2-11345\n2\n-5-3-2-1\n-4\nEstudiante IIIy\nx01 1 2345 -4-3-2-11345\n2\n-5-3-2-1 -1\n-4\nEstudiante II-51. \n2. \n\n--- PÁGINA 3 ---\nMatemáticas - Cuadernillo 1\nSaber 11.°\n3La tabla muestra las relaciones de comercio, venta y compra de productos entre varios países. \nDe acuerdo con la información presentada, ...",
+  "analysis_summary": {
+    "total_chars": 12157,
+    "has_images_references": true,
+    "has_mathematical_notation": true,
+    "areas_mentioned": [
+      "geometría",
+      "estadística",
+      "aritmética",
+      "cálculo"
+    ],
+    "question_indicators": 76,
+    "option_indicators": 80
+  }
+}

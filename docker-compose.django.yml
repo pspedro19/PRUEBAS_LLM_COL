@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: icfes-quest-db
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: icfes_quest_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - icfes-quest-network
+
+  redis:
+    container_name: icfes-quest-redis
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - icfes-quest-network
+
+  backend:
+    container_name: icfes-quest-backend
+    build:
+      context: ./backend_django
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@icfes-quest-db:5432/icfes_quest_db
+      - REDIS_URL=redis://icfes-quest-redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=your-secret-key-here
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend_django:/app
+    networks:
+      - icfes-quest-network
+
+  celery:
+    container_name: icfes-quest-celery
+    build:
+      context: ./backend_django
+      dockerfile: Dockerfile
+    command: celery -A config worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@icfes-quest-db:5432/icfes_quest_db
+      - REDIS_URL=redis://icfes-quest-redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=your-secret-key-here
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend_django:/app
+    networks:
+      - icfes-quest-network
+
+  celery-beat:
+    container_name: icfes-quest-celery-beat
+    build:
+      context: ./backend_django
+      dockerfile: Dockerfile
+    command: celery -A config beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@icfes-quest-db:5432/icfes_quest_db
+      - REDIS_URL=redis://icfes-quest-redis:6379/0
+      - DEBUG=True
+      - SECRET_KEY=your-secret-key-here
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend_django:/app
+    networks:
+      - icfes-quest-network
+
+  frontend:
+    container_name: icfes-quest-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - icfes-quest-network
+
+  pgadmin:
+    container_name: icfes-quest-pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - icfes-quest-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  icfes-quest-network:
+    driver: bridge 

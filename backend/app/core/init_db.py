@@ -1,5 +1,5 @@
 from app.core.database import async_session_maker, init_models
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.question import Question
 from app.core.security import get_password_hash
 from app.core.sample_questions import SAMPLE_QUESTIONS
@@ -16,21 +16,21 @@ async def create_test_users():
             "password": "admin123",
             "username": "admin",
             "display_name": "Admin User",
-            "role": UserRole.ADMIN
+            "role": "admin"
         },
         {
             "email": "teacher@test.com",
             "password": "teacher123",
             "username": "teacher",
             "display_name": "Teacher User",
-            "role": UserRole.TEACHER
+            "role": "teacher"
         },
         {
             "email": "student@test.com",
             "password": "student123",
             "username": "student",
             "display_name": "Student User",
-            "role": UserRole.STUDENT
+            "role": "student"
         }
     ]
 

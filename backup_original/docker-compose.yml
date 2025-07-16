@@ -1,0 +1,66 @@
+services:
+  db:
+    container_name: mathquest-db
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mathquest_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init_new.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mathquest-network
+
+  backend:
+    container_name: mathquest-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.simple
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@mathquest-db:5432/mathquest_db
+    depends_on:
+      - db
+    networks:
+      - mathquest-network
+
+  frontend:
+    container_name: mathquest-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - mathquest-network
+
+  pgadmin:
+    container_name: mathquest-pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - mathquest-network
+
+volumes:
+  postgres_data:
+
+networks:
+  mathquest-network:
+    driver: bridge 
