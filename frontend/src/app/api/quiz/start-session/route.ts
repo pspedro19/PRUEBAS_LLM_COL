@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Forward to backend - Use internal Docker networking
     const backendUrl = 'http://mathquest-backend:8000';
-    const response = await fetch(`${backendUrl}/api/quiz/start-session`, {
+    const response = await fetch(`${backendUrl}/api/icfes/quiz/start-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

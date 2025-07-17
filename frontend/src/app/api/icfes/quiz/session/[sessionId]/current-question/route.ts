@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(
+export async function GET(
   request: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const body = await request.json();
     const authHeader = request.headers.get('Authorization');
     const { sessionId } = params;
 
@@ -17,21 +16,19 @@ export async function POST(
     }
 
     // Forward to backend - Use internal Docker networking
-    const backendUrl = 'http://mathquest-backend:8000';
-    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/submit-answer`, {
-      method: 'POST',
+    const backendUrl = 'http://backend:8000';
+    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/current-question`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': authHeader,
       },
-      body: JSON.stringify(body),
     });
 
     const data = await response.json();
     
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Error in submit-answer route:', error);
+    console.error('Error in current-question route:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

@@ -104,20 +104,26 @@ docker-compose exec db pg_dump -U postgres mathquest_db > backup.sql
 
 ```
 PRUEBAS_LLM_COL/
-├── backend_django/           # Django backend
-│   ├── apps/                # Apps modulares
-│   │   ├── users/          # Gestión de usuarios
-│   │   ├── questions/      # Sistema de preguntas
-│   │   ├── analytics/      # Métricas y analytics
-│   │   └── gamification/   # Sistema de juego
+├── backend_django/           # Django backend (100% funcional)
+│   ├── apps/                # Apps modulares Django
+│   │   ├── users/          # Gestión de usuarios y autenticación
+│   │   ├── questions/      # Sistema de preguntas ICFES
+│   │   ├── icfes/          # Cuadernillos ICFES oficiales
+│   │   ├── gamification/   # Sistema de juego y niveles
+│   │   ├── jarvis/         # IA y asistente virtual
+│   │   ├── assessments/    # Evaluaciones vocacionales
+│   │   ├── analytics/      # Métricas y estadísticas
+│   │   ├── notifications/  # Sistema de notificaciones
+│   │   └── schools/        # Gestión de colegios
 │   └── config/             # Configuración Django
 ├── frontend/                # Next.js frontend
 │   └── src/
 │       ├── app/            # App Router de Next.js
-│       ├── components/     # Componentes React
+│       ├── components/     # Componentes React UI
 │       └── lib/           # Utilidades y contexts
-├── database/               # Scripts SQL iniciales
-├── docs/                   # Documentación
+├── docs/                   # Documentación del proyecto
+├── documentos/             # Cuadernillo ICFES original (PDF)
+├── scripts/                # Scripts de setup
 └── docker-compose.yml     # Orchestración de servicios
 ```
 

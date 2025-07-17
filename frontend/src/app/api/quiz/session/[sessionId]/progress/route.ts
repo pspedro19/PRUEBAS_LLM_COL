@@ -8,7 +8,7 @@ export async function GET(
     const token = request.headers.get('authorization')
     const { sessionId } = params
 
-    const backendResponse = await fetch(`http://mathquest-backend:8000/api/quiz/session/${sessionId}/progress`, {
+    const backendResponse = await fetch(`http://mathquest-backend:8000/api/icfes/quiz/session/${sessionId}/progress`, {
       method: 'GET',
       headers: {
         'Authorization': token || '',

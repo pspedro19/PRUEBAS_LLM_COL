@@ -10,6 +10,9 @@ from django.utils import timezone
 import uuid
 from datetime import timedelta
 
+# Importar modelos nuevos de ICFES basados en Excel
+from .models_nuevo import *
+
 User = get_user_model()
 
 

@@ -11,17 +11,19 @@ interface Question {
   id: string;
   title: string;
   content: string;
+  image_url?: string;
   options: {
-    A: string;
-    B: string;
-    C: string;
-    D: string;
+    [key: string]: {
+      text: string;
+      image_url?: string;
+    };
   };
   area: string;
   topic: string;
   subtopic: string;
   difficulty: string;
   points_value: number;
+  requires_image?: boolean;
 }
 
 interface QuizSession {
@@ -102,7 +104,7 @@ export default function MathDungeonPage() {
       console.log('🔑 Token:', token ? 'OK' : 'Missing');
       
       // Usar la ruta API de Next.js en lugar de llamar directamente al backend
-      const response = await fetch('/api/quiz/start-session', {
+      const response = await fetch('/api/icfes/quiz/start-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ export default function MathDungeonPage() {
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/quiz/session/${currentSession.session_id}/submit-answer`, {
+      const response = await fetch(`/api/icfes/quiz/session/${currentSession.session_id}/submit-answer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +201,7 @@ export default function MathDungeonPage() {
     try {
       console.log('🔍 Fetching next question for session:', currentSession.session_id);
       
-      const response = await fetch(`/api/quiz/session/${currentSession.session_id}/current-question`, {
+      const response = await fetch(`/api/icfes/quiz/session/${currentSession.session_id}/current-question`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -234,7 +236,7 @@ export default function MathDungeonPage() {
     if (!currentSession) return;
 
     try {
-      const response = await fetch(`/api/quiz/session/${currentSession.session_id}/feedback`, {
+      const response = await fetch(`/api/icfes/quiz/session/${currentSession.session_id}/feedback`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -531,7 +533,15 @@ export default function MathDungeonPage() {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-white mb-6">
-                  <p className="text-lg">{currentSession.current_question.content}</p>
+                  <p className="text-lg mb-4">{currentSession.current_question.content}</p>
+                  {currentSession.current_question.image_url && currentSession.current_question.image_url.trim() !== '' && (
+                    <img 
+                      src={currentSession.current_question.image_url} 
+                      alt="Imagen de la pregunta" 
+                      className="mx-auto max-w-full h-auto rounded-lg mb-4"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
                 </div>
 
                 {/* Options */}
@@ -553,8 +563,17 @@ export default function MathDungeonPage() {
                         onChange={(e) => setSelectedAnswer(e.target.value)}
                         className="mr-3"
                       />
-                      <span className="text-white">
-                        <strong>{key}.</strong> {value}
+                      <span className="text-white flex items-center">
+                        <strong>{key}.</strong> 
+                        <span className="ml-2">{value.text}</span>
+                        {value.image_url && value.image_url.trim() !== '' && (
+                          <img 
+                            src={value.image_url} 
+                            alt={`Opción ${key}`} 
+                            className="ml-3 h-8 w-8 rounded border border-white/20"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
                       </span>
                     </label>
                   ))}
