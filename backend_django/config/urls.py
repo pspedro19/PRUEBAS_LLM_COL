@@ -26,9 +26,11 @@ urlpatterns = [
     path('api/analytics/', include('apps.analytics.urls')),
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/schools/', include('apps.schools.urls')),
+    path('api/content/', include('apps.content.urls')),
+    # path('api/learning/', include('apps.learning.urls')),
     
     # Health check
-    path('health/', include('apps.users.urls')),  # Reutilizamos el health check de users
+    path('health/', include('apps.users.urls', namespace='health')),  # Reutilizamos el health check de users
 ]
 
 # Configuración para servir archivos media en desarrollo

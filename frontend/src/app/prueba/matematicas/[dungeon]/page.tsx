@@ -111,7 +111,7 @@ export default function MathDungeonPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          area: 'matematicas',
+          area: dungeon,  // ✅ Usar el dungeon específico en lugar de 'matematicas'
           difficulty: difficultyLevel,
           question_count: difficultyInfo?.questions || 5
         })
@@ -392,17 +392,17 @@ export default function MathDungeonPage() {
                         <div className="text-sm opacity-75">Correctas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-yellow-400">
-                          {feedback.final_score * 10 || 0}
+                        <div className="text-2xl font-bold text-red-400">
+                          {feedback.incorrect_answers || 0}
                         </div>
-                        <div className="text-sm opacity-75">Puntos</div>
+                        <div className="text-sm opacity-75">Incorrectas</div>
                       </div>
-                <div className="text-center">
+                      <div className="text-center">
                         <div className="text-2xl font-bold text-purple-400">
-                          {feedback.final_score * 15 || 0}
+                          {feedback.xp_earned || 0}
                         </div>
                         <div className="text-sm opacity-75">XP Ganado</div>
-                  </div>
+                      </div>
                     </div>
                     </div>
                     
@@ -441,18 +441,88 @@ export default function MathDungeonPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-4 justify-center">
+                  {/* ✨ NUEVO: Detalle de Respuestas */}
+                  {feedback.respuestas_detalle && feedback.respuestas_detalle.length > 0 && (
+                    <div className="bg-white/20 rounded-lg p-6">
+                      <h3 className="text-xl font-semibold mb-4">📋 Detalle de tus Respuestas</h3>
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {feedback.respuestas_detalle.map((respuesta: any, index: number) => (
+                          <div 
+                            key={respuesta.pregunta_id} 
+                            className={`border rounded-lg p-4 ${respuesta.es_correcta ? 'border-green-400 bg-green-900/20' : 'border-red-400 bg-red-900/20'}`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-sm">
+                                Pregunta {index + 1} - {respuesta.area_tematica}
+                              </h4>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${respuesta.es_correcta ? 'bg-green-500' : 'bg-red-500'}`}>
+                                  {respuesta.es_correcta ? '✓ Correcta' : '✗ Incorrecta'}
+                                </span>
+                                <span className="text-xs bg-purple-500 px-2 py-1 rounded">
+                                  +{respuesta.xp_ganado} XP
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <p className="text-sm mb-3 opacity-90">
+                              {respuesta.pregunta_texto}
+                            </p>
+                            
+                            {respuesta.pregunta_imagen && (
+                              <div className="mb-3">
+                                <img 
+                                  src={respuesta.pregunta_imagen} 
+                                  alt="Imagen de la pregunta"
+                                  className="max-w-xs h-auto rounded border"
+                                />
+                              </div>
+                            )}
+                            
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="opacity-75">Tu respuesta: </span>
+                                <span className={respuesta.es_correcta ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+                                  {respuesta.respuesta_usuario ? `${respuesta.respuesta_usuario}) ${respuesta.opciones[respuesta.respuesta_usuario] || 'N/A'}` : 'Sin respuesta'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="opacity-75">Respuesta correcta: </span>
+                                <span className="text-green-400 font-bold">
+                                  {respuesta.respuesta_correcta}) {respuesta.opciones[respuesta.respuesta_correcta] || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-2 text-xs opacity-75">
+                              Tiempo: {respuesta.tiempo_respuesta}s • Dificultad: {respuesta.dificultad}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
                     <Button 
-                      onClick={resetQuiz}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => router.push('/dashboard')}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
                     >
-                      Intentar de Nuevo
+                      🏠 Ver Dashboard
                     </Button>
+                    
                     <Button 
                       onClick={() => router.push('/prueba/matematicas')}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                     >
-                      Volver al Menú
+                      🗡️ Elegir Otro Calabozo
+                    </Button>
+                    
+                    <Button 
+                      onClick={resetQuiz}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3"
+                    >
+                      🔄 Repetir Este Quiz
                     </Button>
                   </div>
                 </div>
@@ -539,7 +609,13 @@ export default function MathDungeonPage() {
                       src={currentSession.current_question.image_url} 
                       alt="Imagen de la pregunta" 
                       className="mx-auto max-w-full h-auto rounded-lg mb-4"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      onLoad={(e) => { 
+                        console.log(`✅ Imagen principal cargada: ${currentSession?.current_question?.image_url}`);
+                      }}
+                      onError={(e) => { 
+                        console.error(`❌ Error cargando imagen principal: ${currentSession?.current_question?.image_url}`);
+                        (e.target as HTMLImageElement).style.display = 'none'; 
+                      }}
                     />
                   )}
                 </div>
@@ -549,32 +625,45 @@ export default function MathDungeonPage() {
                   {Object.entries(currentSession.current_question.options).map(([key, value]) => (
                     <label 
                       key={key}
-                      className={`flex items-center p-4 rounded-lg cursor-pointer transition-all ${
+                      className={`block p-4 rounded-lg cursor-pointer transition-all ${
                         selectedAnswer === key 
                           ? 'bg-blue-600/40 border-blue-400' 
                           : 'bg-white/10 hover:bg-white/20'
                       } border border-white/20`}
                     >
-                      <input
-                        type="radio"
-                        name="answer"
-                        value={key}
-                        checked={selectedAnswer === key}
-                        onChange={(e) => setSelectedAnswer(e.target.value)}
-                        className="mr-3"
-                      />
-                      <span className="text-white flex items-center">
-                        <strong>{key}.</strong> 
-                        <span className="ml-2">{value.text}</span>
-                        {value.image_url && value.image_url.trim() !== '' && (
-                          <img 
-                            src={value.image_url} 
-                            alt={`Opción ${key}`} 
-                            className="ml-3 h-8 w-8 rounded border border-white/20"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                        )}
-                      </span>
+                      <div className="flex items-start">
+                        <input
+                          type="radio"
+                          name="answer"
+                          value={key}
+                          checked={selectedAnswer === key}
+                          onChange={(e) => setSelectedAnswer(e.target.value)}
+                          className="mr-3 mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="text-white flex items-center mb-2">
+                            <strong className="text-lg">{key}.</strong> 
+                            <span className="ml-2">{value.text}</span>
+                          </div>
+                          {value.image_url && value.image_url.trim() !== '' && (
+                            <div className="ml-6">
+                              <img 
+                                src={value.image_url} 
+                                alt={`Opción ${key}`} 
+                                className="max-w-full h-auto rounded border border-white/20 bg-white/90 p-2"
+                                style={{ maxHeight: '200px' }}
+                                onLoad={(e) => { 
+                                  console.log(`✅ Imagen cargada: ${value.image_url}`);
+                                }}
+                                onError={(e) => { 
+                                  console.error(`❌ Error cargando imagen: ${value.image_url}`);
+                                  (e.target as HTMLImageElement).style.display = 'none'; 
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </label>
                   ))}
                 </div>

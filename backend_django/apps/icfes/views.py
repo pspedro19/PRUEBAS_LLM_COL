@@ -11,70 +11,73 @@ from django.db import transaction
 from django.utils import timezone
 import uuid
 import random
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
 
-from .models import (
-    AreaTematica, PreguntaICFES, OpcionRespuesta, 
-    RespuestaUsuarioICFES, UserICFESSession, ICFESExam
-)
+# Importar los modelos correctos que tienen datos
+from .models_nuevo import PreguntaICFES, OpcionRespuesta, AreaTematica, RespuestaUsuarioICFES
+from .models import UserICFESSession, ICFESExam
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_quiz_session(request):
     """
-    Iniciar una nueva sesión de quiz por área temática
+    Iniciar una nueva sesión de quiz por área temática usando datos ICFES reales
     """
     try:
         area = request.data.get('area', 'matematicas')
-        difficulty = request.data.get('difficulty', 'PRINCIPIANTE')
+        difficulty = request.data.get('difficulty', 'EASY')
         question_count = request.data.get('question_count', 5)
         
-        # Mapear área del frontend a áreas temáticas disponibles
+        # Mapear área del frontend a áreas temáticas ICFES
         area_mapping = {
             'algebra-basica': 'Aritmética y Operaciones Básicas',
             'geometria': 'Geometría y Trigonometría',
             'trigonometria': 'Geometría y Trigonometría',
             'estadistica': 'Estadística y Probabilidad',
-            'calculo': 'Álgebra y Funciones',
             'aritmetica': 'Aritmética y Operaciones Básicas',
             'algebra-funciones': 'Álgebra y Funciones',
-            'problemas-aplicados': 'Problemas Aplicados y Análisis'
+            'problemas-aplicados': 'Problemas Aplicados y Análisis',
+            'matematicas': None  # Todas las áreas
         }
         
-        area_name = area_mapping.get(area, 'Álgebra')
+        area_tematica_name = area_mapping.get(area)
         
-        # Buscar área temática
-        try:
-            area_tematica = AreaTematica.objects.get(nombre=area_name)
-        except AreaTematica.DoesNotExist:
-            # Si no existe esa área específica, usar cualquier área disponible
-            area_tematica = AreaTematica.objects.first()
-            if not area_tematica:
+        # Obtener preguntas ICFES según el área
+        if area_tematica_name:
+            try:
+                area_tematica = AreaTematica.objects.get(nombre=area_tematica_name)
+                preguntas_disponibles = PreguntaICFES.objects.filter(
+                    area_tematica=area_tematica,
+                    activa=True
+                )
+            except AreaTematica.DoesNotExist:
                 return Response({
                     'success': False,
-                    'message': 'No hay áreas temáticas disponibles'
+                    'message': f'Área temática {area_tematica_name} no encontrada'
                 }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Obtener preguntas del área temática (máximo 5 aleatorias)
-        preguntas_disponibles = PreguntaICFES.objects.filter(
-            area_tematica=area_tematica,
-            activa=True
-        )
-        
+        else:
+            # Si es 'matematicas', usar todas las preguntas disponibles
+            preguntas_disponibles = PreguntaICFES.objects.filter(activa=True)
+            area_tematica_name = 'TODAS LAS ÁREAS'
+            
         if preguntas_disponibles.count() == 0:
             return Response({
                 'success': False,
-                'message': f'No hay preguntas disponibles para el área {area_name}'
+                'message': f'No hay preguntas disponibles para {area_tematica_name}'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Seleccionar hasta 5 preguntas aleatorias
+        # Seleccionar preguntas aleatorias
         preguntas_count = min(question_count, preguntas_disponibles.count())
         preguntas_ids = list(preguntas_disponibles.values_list('id', flat=True))
         preguntas_seleccionadas = random.sample(preguntas_ids, preguntas_count)
         
         # Crear o obtener examen ICFES por defecto
         icfes_exam, _ = ICFESExam.objects.get_or_create(
-            name=f'Quiz {area_name}',
+            name=f'Quiz {area_tematica_name}',
             defaults={
                 'exam_type': 'PRACTICE',
                 'period': '2024-1',
@@ -84,6 +87,12 @@ def start_quiz_session(request):
             }
         )
         
+        # Cerrar sesiones anteriores activas del usuario
+        UserICFESSession.objects.filter(
+            user=request.user,
+            status__in=['PENDING', 'IN_PROGRESS']
+        ).update(status='ABANDONED')
+        
         # Crear sesión de usuario
         with transaction.atomic():
             session = UserICFESSession.objects.create(
@@ -91,16 +100,15 @@ def start_quiz_session(request):
                 icfes_exam=icfes_exam,
                 session_type='BY_AREA',
                 status='IN_PROGRESS',
-                areas_filter=[area_name],
+                areas_filter=[area_tematica_name],
                 total_questions=preguntas_count,
                 custom_time_limit=30,
                 started_at=timezone.now()
             )
             
             # Guardar preguntas en el orden aleatorio en la sesión
-            # (Usaremos un campo JSON para almacenar el orden)
             session.areas_filter = {
-                'area': area_name,
+                'area': area_tematica_name,
                 'preguntas_ids': preguntas_seleccionadas,
                 'current_index': 0
             }
@@ -120,40 +128,38 @@ def start_quiz_session(request):
         
         question_data = {
             'id': str(primera_pregunta.id),
-            'title': f'Pregunta 1 de {preguntas_count}',
+            'title': f"Pregunta {primera_pregunta.id}",
             'content': primera_pregunta.pregunta_texto,
-            'image_url': primera_pregunta.imagen_pregunta_url if primera_pregunta.imagen_pregunta_url else None,
+            'image_url': primera_pregunta.imagen_pregunta_url,
             'options': opciones_dict,
-            'area': area_name,
-            'topic': primera_pregunta.tema_especifico.nombre if primera_pregunta.tema_especifico else area_name,
-            'subtopic': '',
+            'area': 'Matemáticas',
+            'topic': primera_pregunta.area_tematica.nombre if primera_pregunta.area_tematica else 'General',
+            'subtopic': primera_pregunta.area_tematica.nombre if primera_pregunta.area_tematica else 'General',
             'difficulty': primera_pregunta.nivel_dificultad,
-            'points_value': primera_pregunta.puntos_xp,
-            'requires_image': primera_pregunta.requiere_imagen
+            'points_value': 2,
+            'requires_image': bool(primera_pregunta.imagen_pregunta_url),
         }
         
         return Response({
             'success': True,
             'data': {
                 'session_id': str(session.uuid),
-                'area': area_name,
-                'difficulty': difficulty,
+                'area': area_tematica_name,
                 'total_questions': preguntas_count,
                 'current_question': question_data,
                 'progress': {
-                    'answered': 0,
+                    'answered': 1,
                     'total': preguntas_count,
-                    'percentage': 0
-                },
-                'current_score': 0,
-                'current_xp': 0
+                    'percentage': (1 / preguntas_count) * 100
+                }
             }
         })
         
     except Exception as e:
+        print(f"Error en start_quiz_session: {str(e)}")
         return Response({
             'success': False,
-            'message': f'Error al iniciar quiz: {str(e)}'
+            'message': f'Error interno del servidor: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -204,15 +210,16 @@ def get_current_question(request, session_id):
         
         question_data = {
             'id': str(pregunta.id),
-            'title': f'Pregunta {current_index + 1} de {len(preguntas_ids)}',
+            'title': f"Pregunta {pregunta.id}",
             'content': pregunta.pregunta_texto,
-            'image_url': pregunta.imagen_pregunta_url if pregunta.imagen_pregunta_url else None,
+            'image_url': pregunta.imagen_pregunta_url,
             'options': opciones_dict,
-            'area': session_data.get('area', ''),
-            'topic': pregunta.tema_especifico.nombre if pregunta.tema_especifico else '',
+            'area': 'Matemáticas',
+            'topic': pregunta.area_tematica.nombre if pregunta.area_tematica else 'General',
+            'subtopic': pregunta.area_tematica.nombre if pregunta.area_tematica else 'General',
             'difficulty': pregunta.nivel_dificultad,
-            'points_value': pregunta.puntos_xp,
-            'requires_image': pregunta.requiere_imagen
+            'points_value': 2,
+            'requires_image': bool(pregunta.imagen_pregunta_url),
         }
         
         return Response({
@@ -220,167 +227,9 @@ def get_current_question(request, session_id):
             'data': {
                 'question': question_data,
                 'progress': {
-                    'answered': current_index,
+                    'answered': current_index + 1,
                     'total': len(preguntas_ids),
-                    'percentage': int((current_index / len(preguntas_ids)) * 100)
-                },
-                'session_complete': False
-            }
-        })
-        
-    except UserICFESSession.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'Sesión no encontrada'
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Error al obtener pregunta: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def submit_answer(request, session_id):
-    """
-    Enviar respuesta a una pregunta
-    """
-    try:
-        session = UserICFESSession.objects.get(
-            uuid=session_id,
-            user=request.user,
-            status='IN_PROGRESS'
-        )
-        
-        question_id = request.data.get('question_id')
-        selected_answer = request.data.get('selected_answer')
-        
-        if not question_id or not selected_answer:
-            return Response({
-                'success': False,
-                'message': 'Faltan datos requeridos'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Obtener pregunta y opción seleccionada
-        pregunta = PreguntaICFES.objects.get(id=question_id)
-        opcion_seleccionada = OpcionRespuesta.objects.get(
-            pregunta=pregunta,
-            letra_opcion=selected_answer
-        )
-        
-        # Obtener la respuesta correcta
-        opcion_correcta = OpcionRespuesta.objects.get(
-            pregunta=pregunta,
-            es_correcta=True
-        )
-        
-        is_correct = opcion_seleccionada.es_correcta
-        points_earned = pregunta.puntos_xp if is_correct else 0
-        xp_earned = points_earned
-        
-        # Guardar respuesta del usuario
-        with transaction.atomic():
-            respuesta = RespuestaUsuarioICFES.objects.create(
-                user=request.user,
-                pregunta=pregunta,
-                opcion_seleccionada=selected_answer,
-                es_correcta=is_correct,
-                tiempo_respuesta_segundos=30,  # Por defecto
-                xp_ganado=xp_earned,
-                session_id=str(session.uuid)
-            )
-            
-            # Actualizar progreso de la sesión
-            session.answered_questions += 1
-            session_data = session.areas_filter
-            current_index = session_data.get('current_index', 0)
-            session_data['current_index'] = current_index + 1
-            session.areas_filter = session_data
-            session.save()
-        
-        # Verificar si es la última pregunta
-        preguntas_ids = session_data.get('preguntas_ids', [])
-        session_complete = (current_index + 1) >= len(preguntas_ids)
-        
-        if session_complete:
-            session.status = 'COMPLETED'
-            session.completed_at = timezone.now()
-            session.save()
-        
-        return Response({
-            'success': True,
-            'data': {
-                'is_correct': is_correct,
-                'correct_answer': opcion_correcta.letra_opcion,
-                'explanation': opcion_correcta.explicacion_opcion or 'Respuesta correcta',
-                'points_earned': points_earned,
-                'xp_earned': xp_earned,
-                'total_score': session.answered_questions,  # Simplificado
-                'total_xp': points_earned,  # Simplificado
-                'session_complete': session_complete
-            }
-        })
-        
-    except (UserICFESSession.DoesNotExist, PreguntaICFES.DoesNotExist, OpcionRespuesta.DoesNotExist):
-        return Response({
-            'success': False,
-            'message': 'Sesión o pregunta no encontrada'
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Error al procesar respuesta: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_quiz_feedback(request, session_id):
-    """
-    Obtener retroalimentación de la sesión completada
-    """
-    try:
-        session = UserICFESSession.objects.get(
-            uuid=session_id,
-            user=request.user,
-            status='COMPLETED'
-        )
-        
-        # Obtener todas las respuestas de la sesión
-        respuestas = RespuestaUsuarioICFES.objects.filter(
-            usuario=request.user,
-            sesion_id=str(session.uuid)
-        )
-        
-        total_questions = respuestas.count()
-        correct_answers = respuestas.filter(es_correcta=True).count()
-        accuracy = (correct_answers / total_questions * 100) if total_questions > 0 else 0
-        
-        # Generar feedback básico
-        if accuracy >= 80:
-            message = "¡Excelente trabajo! Dominas muy bien este tema."
-            strengths = ["Comprensión sólida del tema", "Buena aplicación de conceptos"]
-            improvements = ["Continúa practicando para mantener este nivel"]
-        elif accuracy >= 60:
-            message = "Buen trabajo, pero hay espacio para mejorar."
-            strengths = ["Conocimiento básico del tema"]
-            improvements = ["Revisar conceptos fundamentales", "Practicar más ejercicios"]
-        else:
-            message = "Es recomendable repasar los conceptos básicos."
-            strengths = ["Iniciativa para practicar"]
-            improvements = ["Estudiar teoría fundamental", "Practicar ejercicios básicos", "Buscar apoyo adicional"]
-        
-        return Response({
-            'success': True,
-            'data': {
-                'accuracy': accuracy,
-                'final_score': correct_answers,
-                'total_questions': total_questions,
-                'feedback': {
-                    'message': message,
-                    'strengths': strengths,
-                    'improvements': improvements
+                    'percentage': ((current_index + 1) / len(preguntas_ids)) * 100
                 }
             }
         })
@@ -391,7 +240,293 @@ def get_quiz_feedback(request, session_id):
             'message': 'Sesión no encontrada'
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print(f"Error en get_current_question: {str(e)}")
         return Response({
             'success': False,
-            'message': f'Error al obtener feedback: {str(e)}'
+            'message': f'Error interno del servidor: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_icfes_answer(request, session_id):
+    """
+    Enviar respuesta a una pregunta del quiz ICFES
+    """
+    try:
+        # Obtener datos del request
+        question_id = request.data.get('question_id')
+        selected_answer = request.data.get('selected_answer')
+        
+        if not question_id or not selected_answer:
+            return Response({
+                'success': False,
+                'message': 'question_id y selected_answer son requeridos'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        print(f"🔍 SUBMIT_ICFES_ANSWER: Session {session_id}, Question {question_id}, Answer {selected_answer}")
+        
+        # Obtener la sesión
+        try:
+            session = UserICFESSession.objects.get(
+                uuid=session_id,
+                user=request.user
+            )
+            print(f"✅ Sesión encontrada: {session.uuid}")
+        except UserICFESSession.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Sesión no encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Obtener la pregunta ICFES
+        try:
+            pregunta = PreguntaICFES.objects.get(id=question_id)
+            print(f"✅ Pregunta encontrada: {pregunta.pregunta_texto[:50]}...")
+        except PreguntaICFES.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Pregunta no encontrada'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Obtener la opción seleccionada
+        try:
+            opcion = OpcionRespuesta.objects.get(
+                pregunta=pregunta,
+                letra_opcion=selected_answer
+            )
+            print(f"✅ Opción encontrada: {opcion.letra_opcion} - {opcion.texto_opcion[:30]}...")
+        except OpcionRespuesta.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': f'Opción {selected_answer} no existe para la pregunta {question_id}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar si la respuesta es correcta
+        is_correct = opcion.es_correcta
+        print(f"✅ Respuesta correcta: {pregunta.respuesta_correcta}")
+        
+        # Verificar si ya existe una respuesta para esta pregunta en esta sesión
+        existing_response = RespuestaUsuarioICFES.objects.filter(
+            user=request.user,
+            pregunta=pregunta,
+            session_id=str(session_id)
+        ).first()
+        
+        if existing_response:
+            # Actualizar respuesta existente
+            existing_response.opcion_seleccionada = opcion.letra_opcion
+            existing_response.es_correcta = is_correct
+            existing_response.save()
+            print(f"🔄 Respuesta actualizada para pregunta {question_id}")
+        else:
+            # Crear nueva respuesta
+            respuesta = RespuestaUsuarioICFES.objects.create(
+                user=request.user,
+                pregunta=pregunta,
+                opcion_seleccionada=opcion.letra_opcion,
+                es_correcta=is_correct,
+                tiempo_respuesta_segundos=60,  # Valor fijo por ahora
+                session_id=str(session_id),
+                tipo_evaluacion='PRACTICA',
+            )
+            print(f"✨ Nueva respuesta creada para pregunta {question_id}")
+        
+        # Actualizar progreso de la sesión y avanzar al siguiente índice
+        session_data = session.areas_filter or {}
+        preguntas_ids = session_data.get('preguntas_ids', [])
+        current_index = session_data.get('current_index', 0)
+        total_questions_in_session = len(preguntas_ids) if preguntas_ids else session.total_questions
+        
+        # Avanzar al siguiente índice
+        next_index = current_index + 1
+        
+        # Actualizar el índice en la sesión
+        session_data['current_index'] = next_index
+        session.areas_filter = session_data
+        
+        # Verificar si completó todas las preguntas
+        is_completed = next_index >= total_questions_in_session
+        if is_completed:
+            session.status = 'COMPLETED'
+            session.completed_at = timezone.now()
+            print(f"🏆 Sesión completada!")
+        
+        session.save()
+        print(f"📊 Progreso actualizado: {next_index}/{total_questions_in_session}")
+        
+        return Response({
+            'success': True,
+            'data': {
+                'is_correct': is_correct,
+                'correct_answer': pregunta.respuesta_correcta,
+                'progress': {
+                    'current': next_index,
+                    'total': total_questions_in_session,
+                    'percentage': (next_index / total_questions_in_session) * 100 if total_questions_in_session else 0
+                },
+                'session_complete': is_completed,
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en submit_icfes_answer: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_quiz_feedback(request, session_id):
+    """
+    Obtener feedback del quiz completado
+    """
+    try:
+        # Obtener la sesión
+        session = UserICFESSession.objects.get(
+            uuid=session_id,
+            user=request.user
+        )
+        
+        # Obtener preguntas de la sesión
+        session_data = session.areas_filter or {}
+        preguntas_ids = session_data.get('preguntas_ids', [])
+        
+        if not preguntas_ids:
+            return Response({
+                'success': False,
+                'message': 'No se encontraron preguntas en la sesión'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener respuestas del usuario para esta sesión
+        respuestas_usuario = RespuestaUsuarioICFES.objects.filter(
+            user=request.user,
+            session_id=str(session_id)  # Asegurar que es string
+        ).select_related('pregunta', 'pregunta__area_tematica')
+        
+        # Calcular estadísticas
+        total_questions = len(preguntas_ids)
+        answered_questions = respuestas_usuario.count()
+        correct_answers = respuestas_usuario.filter(es_correcta=True).count()
+        
+        # 🎯 NUEVO: Crear detalle de respuestas
+        respuestas_detalle = []
+        total_xp_ganado = 0
+        
+        for respuesta in respuestas_usuario:
+            pregunta = respuesta.pregunta
+            
+            # Obtener opciones de la pregunta
+            opciones = OpcionRespuesta.objects.filter(pregunta=pregunta).order_by('letra_opcion')
+            opciones_dict = {}
+            for opt in opciones:
+                opciones_dict[opt.letra_opcion] = opt.texto_opcion
+            
+            respuesta_detalle = {
+                'pregunta_id': pregunta.id,
+                'pregunta_texto': pregunta.pregunta_texto,
+                'pregunta_imagen': pregunta.imagen_pregunta_url,
+                'area_tematica': pregunta.area_tematica.nombre if pregunta.area_tematica else 'General',
+                'opciones': opciones_dict,
+                'respuesta_usuario': respuesta.opcion_seleccionada,
+                'respuesta_correcta': pregunta.respuesta_correcta,
+                'es_correcta': respuesta.es_correcta,
+                'tiempo_respuesta': respuesta.tiempo_respuesta_segundos,
+                'xp_ganado': respuesta.xp_ganado,
+                'dificultad': pregunta.nivel_dificultad
+            }
+            respuestas_detalle.append(respuesta_detalle)
+            total_xp_ganado += respuesta.xp_ganado
+        
+        # Evitar división por cero
+        if answered_questions > 0:
+            accuracy = (correct_answers / answered_questions) * 100
+        else:
+            accuracy = 0
+        
+        # Determinar nivel de desempeño
+        if accuracy >= 80:
+            performance_level = 'Excelente'
+            performance_message = '¡Felicitaciones! Tienes un dominio excelente del tema.'
+        elif accuracy >= 60:
+            performance_level = 'Bueno'
+            performance_message = 'Buen trabajo. Continúa practicando para mejorar.'
+        elif accuracy >= 40:
+            performance_level = 'Regular'
+            performance_message = 'Necesitas más práctica en este tema.'
+        else:
+            performance_level = 'Necesita Mejora'
+            performance_message = 'Te recomendamos repasar los conceptos básicos.'
+        
+        # Generar recomendaciones
+        recommendations = []
+        if accuracy < 50:
+            recommendations.extend([
+                'Repasa los conceptos fundamentales del tema',
+                'Practica con ejercicios básicos antes de avanzar'
+            ])
+        elif accuracy < 80:
+            recommendations.extend([
+                'Continúa practicando para consolidar conocimientos',
+                'Revisa los errores cometidos para evitar repetirlos'
+            ])
+        else:
+            recommendations.extend([
+                '¡Excelente trabajo! Puedes avanzar al siguiente nivel',
+                'Intenta problemas más desafiantes'
+            ])
+        
+        recommendations.append('Consulta material adicional si tienes dudas')
+        
+        # 🎯 MEJORADO: Crear respuesta completa con detalle
+        response_data = {
+            'session_id': str(session.uuid),
+            'total_questions': total_questions,
+            'answered_questions': answered_questions,
+            'correct_answers': correct_answers,
+            'incorrect_answers': answered_questions - correct_answers,
+            'accuracy': round(accuracy, 1),
+            'final_score': correct_answers,
+            'score_percentage': round(accuracy, 1),
+            'performance_level': performance_level,
+            'performance_message': performance_message,
+            'time_spent': f'{answered_questions * 60} segundos',  # Estimado
+            'xp_earned': total_xp_ganado,  # XP real calculado por dificultad
+            'recommendations': recommendations,
+            'respuestas_detalle': respuestas_detalle,  # ✨ NUEVO: Detalle completo
+            'feedback': {
+                'message': performance_message,
+                'strengths': [
+                    f'Respondiste {correct_answers} preguntas correctamente',
+                    f'Obtuviste {total_xp_ganado} puntos de experiencia'
+                ] if correct_answers > 0 else ['Completaste el quiz'],
+                'improvements': [
+                    f'Revisa las {answered_questions - correct_answers} preguntas incorrectas'
+                ] if accuracy < 80 and (answered_questions - correct_answers) > 0 else []
+            }
+        }
+        
+        return Response({
+            'success': True,
+            'data': response_data
+        })
+        
+    except UserICFESSession.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Sesión no encontrada'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        import traceback
+        error_message = f"Error al obtener feedback: {str(e)}"
+        print(f"Error en get_quiz_feedback: {error_message}")
+        print(traceback.format_exc())
+        return Response({
+            'success': False,
+            'message': error_message
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

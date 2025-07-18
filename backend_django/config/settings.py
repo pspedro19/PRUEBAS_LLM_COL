@@ -33,13 +33,13 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
+    # 'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
     'drf_spectacular',
-    'channels',
-    'django_celery_beat',
-    'django_celery_results',
+    # 'channels',
+    # 'django_celery_beat',
+    # 'django_celery_results',
 ]
 
 LOCAL_APPS = [
@@ -52,6 +52,8 @@ LOCAL_APPS = [
     'apps.analytics.apps.AnalyticsConfig',
     'apps.notifications.apps.NotificationsConfig',
     'apps.schools.apps.SchoolsConfig',
+    'apps.content.apps.ContentConfig',
+    'apps.learning.apps.LearningConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -223,24 +225,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Django REST Framework Configuration
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-}
+
 
 # JWT Configuration
 SIMPLE_JWT = {
@@ -268,6 +253,13 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# CORS para archivos estáticos y media
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # Solo en desarrollo
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+]
 
 # API Documentation
 SPECTACULAR_SETTINGS = {
@@ -355,6 +347,17 @@ ICFES_SETTINGS = {
     'MAX_GLOBAL_SCORE': 500,
     'PREDICTION_UPDATE_INTERVAL': 24,  # hours
 }
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Media files (user uploads, ICFES images)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Static files configuration for WhiteNoise
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Security Settings
 if not DEBUG:
