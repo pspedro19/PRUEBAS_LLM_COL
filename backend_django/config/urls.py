@@ -27,6 +27,7 @@ urlpatterns = [
     path('api/notifications/', include('apps.notifications.urls')),
     path('api/schools/', include('apps.schools.urls')),
     path('api/content/', include('apps.content.urls')),
+    path('api/ai-llm/', include('apps.ai_llm.urls')),
     # path('api/learning/', include('apps.learning.urls')),
     
     # Health check

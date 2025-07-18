@@ -54,6 +54,7 @@ LOCAL_APPS = [
     'apps.schools.apps.SchoolsConfig',
     'apps.content.apps.ContentConfig',
     'apps.learning.apps.LearningConfig',
+    'apps.ai_llm.apps.AiLlmConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
