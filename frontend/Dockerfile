@@ -13,7 +13,7 @@ COPY . .
 RUN mkdir -p .next
 
 ENV NODE_ENV=development
-ENV NEXT_PUBLIC_API_URL=http://backend:8000
+ENV NEXT_PUBLIC_API_URL=http://mathquest-backend:8000/api
 
 # Expose port
 EXPOSE 3000

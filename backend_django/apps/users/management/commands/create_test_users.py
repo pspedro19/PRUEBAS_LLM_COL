@@ -108,19 +108,18 @@ class Command(BaseCommand):
                 admin_user.set_password('admin123')
                 admin_user.save()
                 
-                # Crear perfil avanzado
                 admin_profile = UserProfile.objects.create(
                     user=admin_user,
                     total_questions_answered=1500,
-                    total_correct_answers=1350,
-                    total_study_minutes=12000,
+                    total_correct_answers=1350,  # 90% accuracy
+                    total_study_minutes=18000,  # 300 horas
                     current_streak=45,
-                    max_streak=67,
+                    max_streak=60,
                     current_vitality=100,
-                    learning_style='Visual',
-                    difficulty_preference='adaptive',
-                    average_response_time=25.5,
-                    improvement_rate=15.2
+                    learning_style='Analítico',
+                    difficulty_preference='hard',
+                    average_response_time=15.5,
+                    improvement_rate=12.8
                 )
                 
                 self.stdout.write(
@@ -129,19 +128,22 @@ class Command(BaseCommand):
                     )
                 )
 
-            # 2. PROFESOR - Usuario profesor/tutor
+            self.stdout.write('👩‍🏫 Creando Profesor - Usuario Staff...')
+            
+            # 2. PROFESOR - Usuario con permisos de staff
             teacher_user, created = User.objects.get_or_create(
                 email='profesor@icfesquest.com',
                 defaults={
-                    'username': 'prof_martinez',
+                    'username': 'profesor_icfes',
                     'first_name': 'María',
-                    'last_name': 'Martínez',
-                    'identification_number': '9876543210',
-                    'phone_number': '+573019876543',
-                    'birth_date': date(1990, 8, 22),
+                    'last_name': 'Docente',
+                    'identification_number': '0987654321',
+                    'phone_number': '+573109876543',
+                    'birth_date': date(1980, 8, 22),
                     'school': school1,
-                    'target_university': uni_andes,
-                    'target_career': 'Licenciatura en Matemáticas',
+                    'grade': None,  # Profesores no tienen grado
+                    'target_university': None,
+                    'target_career': 'Educación Matemática',
                     'is_staff': True,
                     'hero_class': 'A',
                     'level': 18,
@@ -161,15 +163,15 @@ class Command(BaseCommand):
                 teacher_profile = UserProfile.objects.create(
                     user=teacher_user,
                     total_questions_answered=800,
-                    total_correct_answers=720,
-                    total_study_minutes=6000,
-                    current_streak=23,
-                    max_streak=35,
+                    total_correct_answers=720,  # 90% accuracy
+                    total_study_minutes=9600,  # 160 horas
+                    current_streak=12,
+                    max_streak=25,
                     current_vitality=85,
-                    learning_style='Auditivo',
-                    difficulty_preference='hard',
-                    average_response_time=18.3,
-                    improvement_rate=12.8
+                    learning_style='Visual',
+                    difficulty_preference='adaptive',
+                    average_response_time=18.2,
+                    improvement_rate=8.5
                 )
                 
                 self.stdout.write(
@@ -178,15 +180,17 @@ class Command(BaseCommand):
                     )
                 )
 
-            # 3. ESTUDIANTE - Usuario estudiante típico
+            self.stdout.write('👩‍🎓 Creando Estudiante - Usuario Regular...')
+            
+            # 3. ESTUDIANTE - Usuario estudiante normal
             student_user, created = User.objects.get_or_create(
                 email='estudiante@icfesquest.com',
                 defaults={
-                    'username': 'ana_rodriguez',
+                    'username': 'estudiante_icfes',
                     'first_name': 'Ana',
-                    'last_name': 'Rodríguez',
+                    'last_name': 'Estudiante',
                     'identification_number': '1122334455',
-                    'phone_number': '+573205551234',
+                    'phone_number': '+573201122334',
                     'birth_date': date(2006, 3, 10),
                     'school': school2,
                     'grade': 11,
@@ -196,7 +200,7 @@ class Command(BaseCommand):
                     'level': 8,
                     'experience_points': 3500,
                     'initial_assessment_completed': True,
-                    'vocational_test_completed': False,
+                    'vocational_test_completed': True,
                     'assigned_role': 'DPS',
                     'avatar_evolution_stage': 2,
                     'last_activity': timezone.now(),
@@ -210,8 +214,8 @@ class Command(BaseCommand):
                 student_profile = UserProfile.objects.create(
                     user=student_user,
                     total_questions_answered=250,
-                    total_correct_answers=175,
-                    total_study_minutes=1200,
+                    total_correct_answers=175,  # 70% accuracy
+                    total_study_minutes=1200,  # 20 horas
                     current_streak=7,
                     max_streak=12,
                     current_vitality=75,
@@ -220,6 +224,28 @@ class Command(BaseCommand):
                     average_response_time=35.2,
                     improvement_rate=8.5
                 )
+                
+                # Crear una predicción ICFES de ejemplo para el estudiante
+                try:
+                    from apps.icfes.models import ICFESPrediction
+                    ICFESPrediction.objects.create(
+                        user=student_user,
+                        prediction_type='CURRENT',
+                        predicted_mathematics=78,
+                        predicted_reading=82,
+                        predicted_natural_sciences=75,
+                        predicted_social_studies=80,
+                        predicted_english=70,
+                        predicted_global=385,
+                        confidence_level='MEDIUM',
+                        confidence_percentage=75.0,
+                        data_points_used=250,
+                        study_hours_factor=20.0,
+                        improvement_trend=8.5
+                    )
+                    self.stdout.write('   📊 Predicción ICFES creada: 385/500 puntos')
+                except Exception as e:
+                    self.stdout.write(f'   ⚠️ Error creando predicción: {e}')
                 
                 self.stdout.write(
                     self.style.SUCCESS(

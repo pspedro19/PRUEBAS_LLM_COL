@@ -215,6 +215,9 @@ class Question(models.Model):
     times_correct = models.IntegerField(default=0)
     average_time_seconds = models.FloatField(default=0.0)
     
+    # Experiencia asignada a la pregunta
+    xp_value = models.IntegerField(default=10)
+    
     # Configuración para IA
     ai_explanation_prompt = models.TextField(blank=True, null=True)
     tags = models.JSONField(default=list, blank=True)  # Tags para búsqueda y clasificación

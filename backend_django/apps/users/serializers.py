@@ -135,8 +135,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             **validated_data
         )
         
-        # Crear perfil automáticamente
-        UserProfile.objects.create(user=user)
+        # El UserProfile se crea automáticamente por la señal post_save
         
         return user
 
