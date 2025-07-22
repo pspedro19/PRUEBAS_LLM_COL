@@ -4,52 +4,201 @@ import Link from 'next/link'
 import EpicNavigation from '@/components/EpicNavigation'
 import EpicStatsPanel from '@/components/EpicStatsPanel'
 import { useAuth } from '@/lib/auth-context'
+import { useState, useEffect } from 'react'
+
+interface HunterStat {
+  label: string
+  value: string
+  maxValue: number
+  currentValue: number
+  color: string
+  icon: string
+  description: string
+  detail: string
+}
+
+interface UserStats {
+  hunter_stats?: HunterStat[]
+  dashboard_metrics?: any
+  user_info?: {
+    level: number;
+  };
+  academic_progress?: {
+    correct_answers: number;
+    current_streak: number;
+  };
+}
 
 export default function Home() {
   const { user, logout } = useAuth()
+  const [stats, setStats] = useState<HunterStat[]>([])
+  const [loading, setLoading] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   
-  const statsData = [
+  // Función para obtener estadísticas
+  const fetchUserStats = async (showLoading = true) => {
+    if (!user) {
+      // Solo para visitantes no logueados usar datos hardcodeados
+      setStats(defaultStatsData)
+      return
+    }
+
+    if (showLoading) {
+      setLoading(true)
+    }
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        console.warn('No token found for logged user')
+        setStats(defaultStatsData)
+        return
+      }
+
+      const response = await fetch(`/api/auth/stats?t=${Date.now()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data: UserStats = await response.json()
+      console.log('🔍 API Response received:', data)
+      
+      // SIEMPRE usar los datos del backend para usuarios logueados
+      if (data.hunter_stats && data.hunter_stats.length > 0) {
+        console.log('📊 Using hunter_stats from API:', data.hunter_stats)
+        setStats(data.hunter_stats)
+      } else {
+        console.log('🔧 Creating real user stats from API data')
+        console.log('📊 User info:', data.user_info)
+        console.log('📊 Academic progress:', data.academic_progress)
+        
+        // Si no hay hunter_stats en la respuesta, crear estructura con datos reales en 0
+        const realUserStats = [
+          {
+            label: 'NIVEL TORRE',
+            value: data.user_info?.level?.toString() || '1',
+            maxValue: 100,
+            currentValue: data.user_info?.level || 1,
+            color: '#FFD700',
+            icon: '🏗️',
+            description: 'Pisos conquistados',
+            detail: `Nivel actual: ${data.user_info?.level || 1}. ¡Responde preguntas para subir de nivel!`
+          },
+          {
+            label: 'PUNTOS ICFES',
+            value: '0',
+            maxValue: 500,
+            currentValue: 0,
+            color: '#39FF14',
+            icon: '📊',
+            description: 'Puntuación proyectada',
+            detail: 'Responde preguntas para obtener tu primera predicción ICFES.'
+          },
+          {
+            label: 'CALABOZOS',
+            value: Math.floor((data.academic_progress?.correct_answers || 0) / 8).toString(),
+            maxValue: 100,
+            currentValue: Math.floor((data.academic_progress?.correct_answers || 0) / 8),
+            color: '#FFA500',
+            icon: '🏰',
+            description: 'Completados',
+            detail: `Has completado ${Math.floor((data.academic_progress?.correct_answers || 0) / 8)} calabozos. ¡Sigue respondiendo!`
+          },
+          {
+            label: 'RACHA ACTUAL',
+            value: `${data.academic_progress?.current_streak || 0} días`,
+            maxValue: 30,
+            currentValue: data.academic_progress?.current_streak || 0,
+            color: '#9333EA',
+            icon: '🔥',
+            description: 'Días consecutivos',
+            detail: (data.academic_progress?.current_streak || 0) > 0 
+              ? `¡Llevas ${data.academic_progress?.current_streak || 0} días estudiando consecutivamente!`
+              : '¡Inicia tu racha estudiando hoy!'
+          }
+        ]
+        
+        console.log('✅ Real user stats created:', realUserStats)
+        setStats(realUserStats)
+      }
+      
+      setLastUpdate(new Date())
+    } catch (error) {
+      console.error('❌ Error fetching user stats:', error)
+      if (showLoading) {
+        // Solo mostrar datos por defecto si hay error y es la carga inicial
+        setStats(defaultStatsData)
+      }
+    } finally {
+      if (showLoading) {
+        setLoading(false)
+      }
+    }
+  }
+
+  // Datos por defecto para usuarios no logueados o sin datos
+  const defaultStatsData = [
     {
       label: 'NIVEL TORRE',
-      value: '15',
+      value: '1',
       maxValue: 100,
-      currentValue: 15,
+      currentValue: 1,
       color: '#FFD700',
       icon: '🏗️',
       description: 'Pisos conquistados',
-      detail: 'Has ascendido 15 pisos de la Torre de Babel. ¡Sigue escalando!'
+      detail: 'Comienza tu ascenso en la Torre de Babel. ¡Cada respuesta correcta te acerca al siguiente piso!'
     },
     {
       label: 'PUNTOS ICFES',
-      value: '385',
+      value: '0',
       maxValue: 500,
-      currentValue: 385,
+      currentValue: 0,
       color: '#39FF14',
       icon: '📊',
       description: 'Puntuación proyectada',
-      detail: 'Tu puntuación ICFES proyectada basada en tu progreso actual.'
+      detail: 'Tu puntuación ICFES se calculará basada en tu progreso. ¡Responde preguntas para obtener tu primera predicción!'
     },
     {
       label: 'CALABOZOS',
-      value: '42',
+      value: '0',
       maxValue: 100,
-      currentValue: 42,
+      currentValue: 0,
       color: '#FFA500',
       icon: '🏰',
       description: 'Completados',
-      detail: 'Calabozos numéricos y de comprensión completados exitosamente.'
+      detail: 'Los calabozos son desafíos de preguntas agrupadas por tema. ¡Completa tu primer calabozo!'
     },
     {
       label: 'RACHA ACTUAL',
-      value: '7 días',
+      value: '0 días',
       maxValue: 30,
-      currentValue: 7,
+      currentValue: 0,
       color: '#9333EA',
       icon: '🔥',
       description: 'Días consecutivos',
-      detail: '¡Mantén tu racha diaria para obtener bonificaciones!'
+      detail: '¡Inicia tu racha estudiando cada día! Las rachas otorgan bonificaciones especiales.'
     }
   ]
+
+  // Cargar estadísticas del usuario si está logueado
+  useEffect(() => {
+    fetchUserStats()
+  }, [user])
+
+  // Polling para actualizar estadísticas
+  useEffect(() => {
+    if (user) {
+      const interval = setInterval(() => {
+        fetchUserStats(false) // No mostrar loading en cada polling
+      }, 30000) // Cada 30 segundos
+      return () => clearInterval(interval)
+    }
+  }, [user])
 
   const icfesAreas = [
     {
@@ -126,14 +275,7 @@ export default function Home() {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <Link href="/auth/login" className="btn-primary px-6 py-3 text-sm font-bold rounded-none">
-                  ASCENDER
-                </Link>
-                <Link href="/auth/register" className="btn-secondary px-6 py-3 text-sm font-bold rounded-none border border-neonSystem/30 hover:border-neonSystem/60">
-                  UNIRSE
-                </Link>
-              </div>
+              {/* Auth buttons removed - now handled by UserProfile component */}
             </div>
           </div>
         </header>
@@ -238,7 +380,22 @@ export default function Home() {
         <div className="container mx-auto px-4">
           {/* Stats Panel */}
           <div className="mb-12">
-            <EpicStatsPanel stats={statsData} />
+            <EpicStatsPanel 
+              stats={stats} 
+            />
+            
+            {/* Indicador de última actualización */}
+            {user && lastUpdate && (
+              <div className="text-center mt-4">
+                <p className="text-neonSystem/50 text-xs">
+                  📡 Última actualización: {lastUpdate.toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                  })}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Opciones de Prueba ICFES */}
@@ -246,80 +403,64 @@ export default function Home() {
             <div className="text-center mb-8">
               <h2 className="epic-title text-4xl mb-4 text-levelUp system-glow">ELIGE TU DESAFÍO</h2>
               <p className="system-text text-lg text-neonSystem/80 max-w-2xl mx-auto">
-                Selecciona el piso de la torre que deseas conquistar hoy
+                Selecciona tu método de preparación para conquistar la Torre de Babel
               </p>
             </div>
 
-            {/* Prueba Completa */}
-            <div className="epic-card p-8 mb-8 border-2 border-levelUp/50 bg-gradient-to-r from-levelUp/10 to-brightPurple/10">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gradient-levelup rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">🏗️</span>
-                </div>
-                <h3 className="epic-title text-2xl mb-3 text-levelUp">PRUEBA COMPLETA ICFES</h3>
-                <p className="system-text text-base text-neonSystem/80 mb-6 max-w-xl mx-auto">
-                  Enfrenta los cinco pisos de la Torre de Babel en una sola sesión épica. 
-                  La experiencia completa del examen ICFES.
-                </p>
-                <div className="flex justify-center gap-4 mb-6">
-                  <span className="text-sm text-neonSystem/60">⏱️ 4.5 horas</span>
-                  <span className="text-sm text-neonSystem/60">📝 5 secciones</span>
-                  <span className="text-sm text-neonSystem/60">🎯 Simulacro oficial</span>
-                </div>
-                <Link 
-                  href="/prueba/completa"
-                  className="btn-primary px-8 py-4 text-lg font-bold rounded-none epic-title tracking-wider"
-                >
-                  COMENZAR PRUEBA COMPLETA
-                </Link>
-              </div>
-            </div>
-
-            {/* Áreas Específicas */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {icfesAreas.map((area) => (
-                <div key={area.id} className="epic-card p-6 hover:scale-105 transition-transform duration-300">
-                  <div className={`w-16 h-16 bg-gradient-to-r ${area.color} rounded-lg flex items-center justify-center mx-auto mb-4`}>
-                    <span className="text-2xl">{area.icon}</span>
+            {/* Dos opciones principales en grid */}
+            <div className="grid lg:grid-cols-2 gap-12">
+              
+              {/* 1. SISTEMA DE QUIZ - 5 ÁREAS */}
+              <div className="epic-card p-8 border-2 border-neonSystem/50 bg-gradient-to-r from-neonSystem/10 to-brightPurple/10 hover:scale-105 transition-transform duration-300">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-gradient-to-r from-neonSystem to-brightPurple rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-4xl">🎯</span>
                   </div>
-                  <h3 className="epic-title text-xl mb-2 text-neonSystem text-center">{area.name}</h3>
-                  <p className="system-text text-sm text-neonSystem/70 text-center mb-4">{area.subtitle}</p>
-                  <p className="system-text text-xs text-neonSystem/60 text-center mb-4">{area.description}</p>
-                  
-                  {/* Progreso */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-neonSystem/60 mb-1">
-                      <span>Progreso</span>
-                      <span>{area.progress}%</span>
-                    </div>
-                    <div className="w-full bg-dungeon rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full bg-gradient-to-r ${area.color}`}
-                        style={{ width: `${area.progress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-neonSystem/50 mt-1">{area.nextLevel}</p>
+                  <h3 className="epic-title text-3xl mb-4 text-neonSystem">SISTEMA DE QUIZ</h3>
+                  <p className="system-text text-lg text-neonSystem/80 mb-6 max-w-md mx-auto">
+                    Practica con nuestro sistema de quiz por áreas: Matemáticas, Inglés, Ciencias Naturales, Sociales y Lectura Crítica.
+                  </p>
+                  <div className="flex justify-center gap-3 mb-8 text-sm text-neonSystem/60 flex-wrap">
+                    <span>🧮 Matemáticas</span>
+                    <span>🗣️ Inglés</span>
+                    <span>🔬 Ciencias</span>
+                    <span>🏛️ Sociales</span>
+                    <span>📖 Lectura</span>
                   </div>
-
-                  {/* Temas */}
-                  <div className="mb-4">
-                    <div className="flex flex-wrap gap-1">
-                      {area.topics.map((topic) => (
-                        <span key={topic} className="text-xs bg-dungeon px-2 py-1 rounded text-neonSystem/70">
-                          {topic}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
                   <Link 
-                    href={`/prueba/${area.id}`}
-                    className="w-full btn-secondary py-3 text-sm font-bold rounded-none system-text tracking-wider border border-neonSystem/30 hover:border-neonSystem/60 text-center block"
+                    href="/practice"
+                    className="btn-secondary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider w-full"
                   >
-                    ENTRAR AL PISO
+                    COMENZAR QUIZ
                   </Link>
                 </div>
-              ))}
+              </div>
+
+              {/* 2. SISTEMA DE APRENDIZAJE COMPLETO */}
+              <div className="epic-card p-8 border-2 border-brightPurple/50 bg-gradient-to-r from-brightPurple/10 to-levelUp/10 hover:scale-105 transition-transform duration-300">
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-gradient-to-r from-brightPurple to-levelUp rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-4xl">🎓</span>
+                  </div>
+                  <h3 className="epic-title text-3xl mb-4 text-brightPurple">PLAN DE APRENDIZAJE</h3>
+                  <p className="system-text text-lg text-neonSystem/80 mb-6 max-w-md mx-auto">
+                    Sistema completo de aprendizaje personalizado estilo Khan Academy. IA analiza tus debilidades y crea rutas adaptativas.
+                  </p>
+                  <div className="flex justify-center gap-3 mb-8 text-sm text-neonSystem/60 flex-wrap">
+                    <span>🤖 IA Personalizada</span>
+                    <span>📊 Análisis Adaptativo</span>
+                    <span>🛤️ Rutas Dinámicas</span>
+                    <span>📚 Contenido Completo</span>
+                  </div>
+                  <Link 
+                    href="/learning-path"
+                    className="btn-primary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider w-full"
+                  >
+                    CREAR MI PLAN
+                  </Link>
+                </div>
+              </div>
+
             </div>
           </section>
         </div>

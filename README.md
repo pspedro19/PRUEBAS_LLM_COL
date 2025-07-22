@@ -121,11 +121,37 @@ PRUEBAS_LLM_COL/
 │       ├── app/            # App Router de Next.js
 │       ├── components/     # Componentes React UI
 │       └── lib/           # Utilidades y contexts
-├── docs/                   # Documentación del proyecto
+├── scripts/                # Scripts utilitarios y de gestión
+│   ├── run_script.py      # Utilidad para ejecutar scripts
+│   ├── ai_scripts/        # Scripts de IA/LLM
+│   ├── test_scripts/      # Scripts de testing
+│   └── database_scripts/  # Scripts de base de datos organizados por dominio
+│       ├── llm/           # Scripts de LLM/AI
+│       ├── icfes/         # Scripts de ICFES
+│       ├── infra/         # Infraestructura y verificación
+│       ├── analytics/     # Scripts de analytics
+│       ├── content/       # Scripts de contenido
+│       ├── gamification/  # Scripts de gamificación
+│       ├── learning/      # Scripts de learning
+│       ├── notifications/ # Scripts de notificaciones
+│       ├── questions/     # Scripts de preguntas
+│       └── users/         # Scripts de usuarios
+├── *.md                   # Documentación y reportes principales en la raíz
 ├── documentos/             # Cuadernillo ICFES original (PDF)
-├── scripts/                # Scripts de setup
 └── docker-compose.yml     # Orchestración de servicios
 ```
+
+## 📚 Documentación y Reportes
+
+Todos los archivos `.md` de documentación, reportes de análisis, diagramas y resúmenes se encuentran en la **raíz del proyecto** para acceso rápido. Ejemplos:
+- `COMPLETE_TABLE_DOCUMENTATION.md` — Documentación completa de todas las tablas y campos
+- `COMPLETE_DATABASE_ASCII_DIAGRAM.md` — Diagrama ASCII de la base de datos
+- `ACTIVE_TABLES_SUMMARY.md` — Resumen de tablas activas y su cardinalidad
+- `DJANGO_STATUS_REPORT.md` — Estado y verificación de Django
+- `LLM_INTEGRATION_READY.md` — Checklist de preparación para LLM
+- `PROJECT_STRUCTURE_COMPLETE.md` — Estructura y componentes del sistema
+
+Para scripts utilitarios, ver la carpeta `scripts/` y sus subcarpetas temáticas.
 
 ## 🔌 API Endpoints Principales
 

@@ -24,6 +24,11 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@mathquest-db:5432/mathquest_db
+    volumes:
+      # Mount source code for Django auto-reload (development)
+      - ./backend_django:/app
+      # Exclude certain directories to avoid conflicts
+      - /app/__pycache__
     depends_on:
       - db
     networks:
@@ -39,6 +44,19 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    volumes:
+      # Mount source code for hot reload (development)
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
+      - ./frontend/next.config.js:/app/next.config.js
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      # Exclude node_modules and .next to avoid conflicts
+      - /app/node_modules
+      - /app/.next
     depends_on:
       - backend
     networks:

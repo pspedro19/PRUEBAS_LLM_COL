@@ -29,6 +29,7 @@ interface AuthContextType {
   loading: boolean;
   refreshUserData: () => Promise<void>;
   needsOnboarding: boolean;
+  updateUserStats: () => Promise<void>; // Nueva función para actualizar stats
 }
 
 // Updated API URL for Django backend
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Function to refresh user data
-  const refreshUserData = async () => {
+  const refreshUserData = async (): Promise<void> => {
     const token = localStorage.getItem('access_token');
     if (token && user) {
       const stats = await fetchUserStats(token);
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkExistingSession();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     try {
       // Use Next.js API route for Django backend
       const response = await fetch('/api/auth/login', {
@@ -167,13 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       setUser(user);
+      // Function completes successfully without returning a value
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     }
   };
 
-  const register = async (email: string, password: string, full_name: string) => {
+  const register = async (email: string, password: string, full_name: string): Promise<void> => {
     try {
       // Split full name into first and last name
       const nameParts = full_name.trim().split(' ');
@@ -245,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       
       setUser(user);
+      // Function completes successfully without returning a value
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -256,6 +259,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_email');
     setUser(null);
+    // Redirigir a la página principal después del logout
+    window.location.href = '/';
+  };
+
+  const updateUserStats = async (): Promise<void> => {
+    // Simplemente refrescar los datos del usuario
+    await refreshUserData();
   };
 
   const value = {
@@ -265,7 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     loading,
     needsOnboarding: !!needsOnboarding,
-    refreshUserData
+    refreshUserData,
+    updateUserStats
   };
 
   return (

@@ -251,11 +251,88 @@ class UserStatsView(APIView):
         # Regenerar vitalidad
         profile.regenerate_vitality()
         
+        # Obtener predicción ICFES más reciente
+        latest_prediction = None
+        predicted_icfes_score = 0
+        try:
+            from apps.icfes.models import ICFESPrediction, ICFESResult
+            
+            # Primero buscar resultado real más reciente
+            latest_result = ICFESResult.objects.filter(user=user).order_by('-created_at').first()
+            if latest_result:
+                predicted_icfes_score = latest_result.global_score
+            else:
+                # Si no hay resultado real, buscar predicción más reciente
+                latest_prediction = ICFESPrediction.objects.filter(user=user).order_by('-prediction_date').first()
+                if latest_prediction:
+                    predicted_icfes_score = latest_prediction.predicted_global
+        except:
+            # Si hay error en la importación o consulta, usar valor por defecto
+            predicted_icfes_score = 0
+        
+        # Calcular calabozos completados (basado en preguntas contestadas correctamente)
+        # Asumimos que cada "calabozo" tiene aprox 5-10 preguntas
+        questions_per_dungeon = 8  # Promedio de preguntas por calabozo
+        completed_dungeons = profile.total_correct_answers // questions_per_dungeon
+        
+        # Calcular nivel real basado en progreso (usuarios nuevos empiezan en 0)
+        display_level = user.level
+        if profile.total_questions_answered == 0:
+            # Usuario nuevo sin preguntas respondidas = Nivel 0
+            display_level = 0
+        else:
+            # Para usuarios con progreso, usar el nivel real del modelo
+            display_level = user.level
+        
+        # Métricas del Dashboard (formato específico para el frontend)
+        dashboard_metrics = {
+            'torre_level': {
+                'current': display_level,
+                'max': 100,
+                'percentage': (display_level / 100) * 100,
+                'label': 'NIVEL TORRE',
+                'subtitle': 'Pisos conquistados',
+                'description': f'{display_level} / 100',
+                'icon': '🏗️',
+                'color': '#FFD700'
+            },
+            'puntos_icfes': {
+                'current': predicted_icfes_score,
+                'max': 500,
+                'percentage': (predicted_icfes_score / 500) * 100 if predicted_icfes_score > 0 else 0,
+                'label': 'PUNTOS ICFES',
+                'subtitle': 'Puntuación proyectada',
+                'description': f'{predicted_icfes_score} / 500',
+                'icon': '📊',
+                'color': '#39FF14'
+            },
+            'calabozos': {
+                'current': completed_dungeons,
+                'max': 100,
+                'percentage': min((completed_dungeons / 100) * 100, 100),
+                'label': 'CALABOZOS',
+                'subtitle': 'Completados',
+                'description': f'{completed_dungeons} / 100',
+                'icon': '🏰',
+                'color': '#FFA500'
+            },
+            'racha_actual': {
+                'current': profile.current_streak,
+                'max': 30,
+                'percentage': min((profile.current_streak / 30) * 100, 100),
+                'label': 'RACHA ACTUAL',
+                'subtitle': 'Días consecutivos',
+                'description': f'{profile.current_streak} días',
+                'icon': '🔥',
+                'color': '#9333EA'
+            }
+        }
+        
         stats = {
             'user_info': {
                 'username': user.username,
                 'hero_class': user.hero_class,
-                'level': user.level,
+                'level': display_level,  # Usar display_level en lugar de user.level
                 'experience_points': user.experience_points,
                 'avatar_evolution_stage': user.avatar_evolution_stage,
             },
@@ -277,7 +354,52 @@ class UserStatsView(APIView):
                 'initial_completed': user.initial_assessment_completed,
                 'vocational_completed': user.vocational_test_completed,
                 'assigned_role': user.assigned_role,
-            }
+            },
+            # NUEVAS MÉTRICAS DEL DASHBOARD
+            'dashboard_metrics': dashboard_metrics,
+            'hunter_stats': [
+                {
+                    'label': dashboard_metrics['torre_level']['label'],
+                    'value': str(dashboard_metrics['torre_level']['current']),
+                    'maxValue': dashboard_metrics['torre_level']['max'],
+                    'currentValue': dashboard_metrics['torre_level']['current'],
+                    'color': dashboard_metrics['torre_level']['color'],
+                    'icon': dashboard_metrics['torre_level']['icon'],
+                    'description': dashboard_metrics['torre_level']['subtitle'],
+                    'detail': f'Has conquistado {display_level} pisos de la Torre de Babel.' + 
+                            (' ¡Responde preguntas para comenzar a escalar!' if display_level == 0 else ' ¡Sigue escalando!')
+                },
+                {
+                    'label': dashboard_metrics['puntos_icfes']['label'],
+                    'value': str(dashboard_metrics['puntos_icfes']['current']),
+                    'maxValue': dashboard_metrics['puntos_icfes']['max'],
+                    'currentValue': dashboard_metrics['puntos_icfes']['current'],
+                    'color': dashboard_metrics['puntos_icfes']['color'],
+                    'icon': dashboard_metrics['puntos_icfes']['icon'],
+                    'description': dashboard_metrics['puntos_icfes']['subtitle'],
+                    'detail': 'Tu puntuación ICFES proyectada basada en tu progreso actual.'
+                },
+                {
+                    'label': dashboard_metrics['calabozos']['label'],
+                    'value': str(dashboard_metrics['calabozos']['current']),
+                    'maxValue': dashboard_metrics['calabozos']['max'],
+                    'currentValue': dashboard_metrics['calabozos']['current'],
+                    'color': dashboard_metrics['calabozos']['color'],
+                    'icon': dashboard_metrics['calabozos']['icon'],
+                    'description': dashboard_metrics['calabozos']['subtitle'],
+                    'detail': 'Calabozos numéricos y de comprensión completados exitosamente.'
+                },
+                {
+                    'label': dashboard_metrics['racha_actual']['label'],
+                    'value': f"{dashboard_metrics['racha_actual']['current']} días",
+                    'maxValue': dashboard_metrics['racha_actual']['max'],
+                    'currentValue': dashboard_metrics['racha_actual']['current'],
+                    'color': dashboard_metrics['racha_actual']['color'],
+                    'icon': dashboard_metrics['racha_actual']['icon'],
+                    'description': dashboard_metrics['racha_actual']['subtitle'],
+                    'detail': '¡Mantén tu racha diaria para obtener bonificaciones!'
+                }
+            ]
         }
         
         return Response(stats)
@@ -400,6 +522,82 @@ def complete_assessment(request):
     except Exception as e:
         return Response({
             'error': f'Error al completar evaluación: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def update_user_progress(request):
+    """Actualiza el progreso del usuario después de responder una pregunta"""
+    
+    user = request.user
+    profile = user.profile
+    
+    # Obtener datos de la pregunta respondida
+    is_correct = request.data.get('is_correct', False)
+    response_time = request.data.get('response_time', 0)  # En segundos
+    difficulty = request.data.get('difficulty', 'MEDIUM')
+    area = request.data.get('area', 'MATHEMATICS')
+    xp_gained = request.data.get('xp_gained', 10)
+    
+    try:
+        # Actualizar estadísticas básicas
+        profile.total_questions_answered += 1
+        if is_correct:
+            profile.total_correct_answers += 1
+            
+            # Otorgar XP al usuario
+            user.add_experience(xp_gained)
+            
+            # Consumir vitalidad (solo si responde correctamente usa menos)
+            vitality_cost = 2 if is_correct else 5
+            profile.consume_vitality(vitality_cost)
+        
+        # Actualizar tiempo promedio de respuesta
+        if profile.total_questions_answered == 1:
+            profile.average_response_time = response_time
+        else:
+            # Promedio ponderado
+            total_time = profile.average_response_time * (profile.total_questions_answered - 1)
+            profile.average_response_time = (total_time + response_time) / profile.total_questions_answered
+        
+        # Actualizar racha de estudio
+        profile.update_streak()
+        
+        # Calcular tasa de mejora
+        if profile.total_questions_answered >= 10:
+            # Comparar últimas 10 respuestas con las 10 anteriores
+            recent_accuracy = profile.accuracy
+            # Simplificado: asumir mejora si accuracy > 70%
+            if recent_accuracy > 70:
+                profile.improvement_rate = min(profile.improvement_rate + 0.5, 100.0)
+            elif recent_accuracy < 50:
+                profile.improvement_rate = max(profile.improvement_rate - 0.2, 0.0)
+        
+        profile.save()
+        
+        # Respuesta con estadísticas actualizadas
+        new_stats = {
+            'xp_gained': xp_gained,
+            'new_level': user.level,
+            'new_hero_class': user.hero_class,
+            'accuracy': profile.accuracy,
+            'current_streak': profile.current_streak,
+            'vitality_remaining': profile.current_vitality,
+            'total_questions': profile.total_questions_answered,
+            'improvement_rate': profile.improvement_rate
+        }
+        
+        return Response({
+            'success': True,
+            'message': 'Progreso actualizado exitosamente',
+            'stats': new_stats
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Error actualizando progreso: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

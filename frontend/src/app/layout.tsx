@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+import UserProfile from '@/components/UserProfile'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,6 +23,9 @@ export default function RootLayout({
           <div className="relative z-10">
             {children}
           </div>
+          
+          {/* User Profile Component - Always visible */}
+          <UserProfile />
           
           {/* Epic Background Effects */}
           <div className="fixed inset-0 z-0">

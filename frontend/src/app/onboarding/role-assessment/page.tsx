@@ -353,17 +353,17 @@ export default function RoleAssessmentPage() {
 
             <div className="space-y-3">
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/')}
                 className="w-full py-3 bg-gradient-system text-abyss font-bold rounded-lg hover:shadow-effect transition-all duration-300"
               >
-                Ver Mi Perfil Épico 🚀
+                Ir a la Base Principal 🏰
               </button>
               
               <button
                 onClick={() => router.push('/practice')}
                 className="w-full py-3 bg-dungeon/50 border border-neonSystem/30 text-neonSystem font-bold rounded-lg hover:bg-dungeon/70 transition-all duration-300"
               >
-                Comenzar Entrenamiento 📚
+                Comenzar Quiz Directamente 📚
               </button>
             </div>
           </div>

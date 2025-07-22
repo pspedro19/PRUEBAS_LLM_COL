@@ -2,167 +2,91 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import SkillTree from '@/components/SkillTree'
 
-interface DailyMission {
+interface ICFESArea {
   id: string
-  title: string
+  name: string
   description: string
-  reward: string
+  icon: string
+  color: string
   progress: number
-  maxProgress: number
-  completed: boolean
-  type: 'practice' | 'streak' | 'accuracy' | 'challenge'
+  totalQuestions: number
+  completedQuestions: number
+  averageScore: number
+  difficulty: 'Básico' | 'Intermedio' | 'Avanzado'
 }
 
 export default function PracticePage() {
-  const [activeTab, setActiveTab] = useState<'skills' | 'missions' | 'areas'>('skills')
+  const [selectedArea, setSelectedArea] = useState<string | null>(null)
 
-  const skillData = [
+  const icfesAreas: ICFESArea[] = [
     {
-      id: 'algebra-basics',
-      name: 'Álgebra Básica',
-      description: 'Fundamentos de ecuaciones lineales y sistemas',
-      icon: '📐',
-      level: 3,
-      maxLevel: 5,
-      unlocked: true,
-      requiredSkills: [],
-      buff: '+5% en Álgebra',
+      id: 'matematicas',
+      name: 'Matemáticas',
+      description: 'Álgebra, geometría, trigonometría, cálculo y estadística',
+      icon: '🧮',
       color: '#00D9FF',
-      position: { x: 20, y: 20 }
+      progress: 65,
+      totalQuestions: 150,
+      completedQuestions: 98,
+      averageScore: 75,
+      difficulty: 'Intermedio'
     },
     {
-      id: 'geometry',
-      name: 'Geometría',
-      description: 'Áreas, perímetros y teoremas fundamentales',
-      icon: '🔺',
-      level: 2,
-      maxLevel: 5,
-      unlocked: true,
-      requiredSkills: ['algebra-basics'],
-      buff: '+5% en Geometría',
+      id: 'ingles',
+      name: 'Inglés',
+      description: 'Reading comprehension, grammar, vocabulary and listening',
+      icon: '🗣️',
       color: '#39FF14',
-      position: { x: 40, y: 20 }
+      progress: 45,
+      totalQuestions: 120,
+      completedQuestions: 54,
+      averageScore: 68,
+      difficulty: 'Básico'
     },
     {
-      id: 'trigonometry',
-      name: 'Trigonometría',
-      description: 'Funciones trigonométricas y identidades',
-      icon: '📊',
-      level: 1,
-      maxLevel: 5,
-      unlocked: false,
-      requiredSkills: ['geometry'],
-      buff: '+5% en Trigonometría',
-      color: '#FFA500',
-      position: { x: 60, y: 20 }
-    },
-    {
-      id: 'calculus',
-      name: 'Cálculo',
-      description: 'Derivadas, integrales y límites',
-      icon: '∫',
-      level: 0,
-      maxLevel: 5,
-      unlocked: false,
-      requiredSkills: ['trigonometry'],
-      buff: '+5% en Cálculo',
+      id: 'ciencias-naturales',
+      name: 'Ciencias Naturales',
+      description: 'Física, química, biología y ciencias de la tierra',
+      icon: '🔬',
       color: '#9333EA',
-      position: { x: 80, y: 20 }
+      progress: 72,
+      totalQuestions: 140,
+      completedQuestions: 101,
+      averageScore: 82,
+      difficulty: 'Avanzado'
     },
     {
-      id: 'statistics',
-      name: 'Estadística',
-      description: 'Probabilidad, media, mediana y moda',
-      icon: '📈',
-      level: 2,
-      maxLevel: 5,
-      unlocked: true,
-      requiredSkills: ['algebra-basics'],
-      buff: '+5% en Estadística',
+      id: 'sociales-ciudadanas',
+      name: 'Sociales y Ciudadanas',
+      description: 'Historia, geografía, política, economía y competencias ciudadanas',
+      icon: '🏛️',
+      color: '#FFA500',
+      progress: 58,
+      totalQuestions: 130,
+      completedQuestions: 75,
+      averageScore: 71,
+      difficulty: 'Intermedio'
+    },
+    {
+      id: 'lectura-critica',
+      name: 'Lectura Crítica',
+      description: 'Comprensión lectora, análisis textual y competencias comunicativas',
+      icon: '📖',
       color: '#FFD700',
-      position: { x: 30, y: 50 }
-    },
-    {
-      id: 'probability',
-      name: 'Probabilidad',
-      description: 'Eventos, combinaciones y permutaciones',
-      icon: '🎲',
-      level: 0,
-      maxLevel: 5,
-      unlocked: false,
-      requiredSkills: ['statistics'],
-      buff: '+5% en Probabilidad',
-      color: '#FF0044',
-      position: { x: 50, y: 50 }
+      progress: 80,
+      totalQuestions: 110,
+      completedQuestions: 88,
+      averageScore: 85,
+      difficulty: 'Avanzado'
     }
   ]
 
-  const dailyMissions: DailyMission[] = [
-    {
-      id: 'daily-practice',
-      title: 'Práctica Diaria',
-      description: 'Completa 10 ejercicios hoy',
-      reward: '150 XP + 50 Monedas',
-      progress: 7,
-      maxProgress: 10,
-      completed: false,
-      type: 'practice'
-    },
-    {
-      id: 'streak-master',
-      title: 'Maestro de Racha',
-      description: 'Mantén una racha de 5 días',
-      reward: '300 XP + 100 Monedas',
-      progress: 3,
-      maxProgress: 5,
-      completed: false,
-      type: 'streak'
-    },
-    {
-      id: 'accuracy-champion',
-      title: 'Campeón de Precisión',
-      description: 'Logra 90% de precisión en 20 ejercicios',
-      reward: '200 XP + 75 Monedas',
-      progress: 18,
-      maxProgress: 20,
-      completed: false,
-      type: 'accuracy'
-    },
-    {
-      id: 'challenge-complete',
-      title: 'Desafío Completado',
-      description: 'Completa un calabozo de dificultad máxima',
-      reward: '500 XP + 200 Monedas',
-      progress: 1,
-      maxProgress: 1,
-      completed: true,
-      type: 'challenge'
-    }
-  ]
-
-  const handleSkillUpgrade = (skillId: string) => {
-    // Aquí se implementaría la lógica para mejorar habilidades
-    console.log(`Mejorando habilidad: ${skillId}`)
-  }
-
-  const getMissionIcon = (type: string) => {
-    switch (type) {
-      case 'practice': return '📚'
-      case 'streak': return '🔥'
-      case 'accuracy': return '🎯'
-      case 'challenge': return '⚔️'
-      default: return '📋'
-    }
-  }
-
-  const getMissionColor = (type: string) => {
-    switch (type) {
-      case 'practice': return '#00D9FF'
-      case 'streak': return '#FFA500'
-      case 'accuracy': return '#39FF14'
-      case 'challenge': return '#9333EA'
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'Básico': return '#39FF14'
+      case 'Intermedio': return '#FFA500'
+      case 'Avanzado': return '#FF0044'
       default: return '#666666'
     }
   }
@@ -171,167 +95,187 @@ export default function PracticePage() {
     <div className="min-h-screen bg-abyss text-neonSystem pt-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="epic-title text-4xl mb-4 text-levelUp">PRÁCTICA Y HABILIDADES</h1>
-          <p className="system-text text-lg text-neonSystem/80">
-            Domina las matemáticas del ICFES a través de nuestro sistema de habilidades
+        <div className="mb-8 text-center">
+          <h1 className="epic-title text-5xl mb-4 text-levelUp">SISTEMA DE QUIZ ICFES</h1>
+          <p className="system-text text-xl text-neonSystem/80 max-w-3xl mx-auto">
+            Domina las 5 áreas del examen ICFES con nuestro sistema de práctica adaptativo
           </p>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex space-x-1 mb-8 bg-dungeon/50 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('skills')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'skills'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">ÁRBOL DE TALENTOS</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('missions')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'missions'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">MISIONES DIARIAS</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('areas')}
-            className={`flex-1 py-3 px-4 rounded-md transition-all duration-300 ${
-              activeTab === 'areas'
-                ? 'bg-gradient-system text-neonSystem shadow-effect'
-                : 'text-neonSystem/70 hover:text-neonSystem'
-            }`}
-          >
-            <span className="system-text font-semibold">ÁREAS DE CONOCIMIENTO</span>
-          </button>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="epic-card p-4 text-center">
+            <div className="text-2xl text-neonSystem mb-2">📊</div>
+            <div className="epic-title text-lg text-levelUp">Progreso Total</div>
+            <div className="system-text text-2xl text-neonGreen">
+              {Math.round(icfesAreas.reduce((acc, area) => acc + area.progress, 0) / icfesAreas.length)}%
+            </div>
+          </div>
+          <div className="epic-card p-4 text-center">
+            <div className="text-2xl text-neonSystem mb-2">❓</div>
+            <div className="epic-title text-lg text-levelUp">Preguntas</div>
+            <div className="system-text text-2xl text-neonSystem">
+              {icfesAreas.reduce((acc, area) => acc + area.completedQuestions, 0)}
+            </div>
+          </div>
+          <div className="epic-card p-4 text-center">
+            <div className="text-2xl text-neonSystem mb-2">🎯</div>
+            <div className="epic-title text-lg text-levelUp">Precisión</div>
+            <div className="system-text text-2xl text-brightPurple">
+              {Math.round(icfesAreas.reduce((acc, area) => acc + area.averageScore, 0) / icfesAreas.length)}%
+            </div>
+          </div>
+          <div className="epic-card p-4 text-center">
+            <div className="text-2xl text-neonSystem mb-2">🔥</div>
+            <div className="epic-title text-lg text-levelUp">Racha</div>
+            <div className="system-text text-2xl text-neonCyan">12 días</div>
+          </div>
         </div>
 
-        {/* Content */}
-        {activeTab === 'skills' && (
-          <SkillTree skills={skillData} onSkillUpgrade={handleSkillUpgrade} />
-        )}
+        {/* ICFES Areas Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {icfesAreas.map((area) => (
+            <div
+              key={area.id}
+              className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300 cursor-pointer"
+              style={{
+                borderColor: `${area.color}50`,
+                boxShadow: selectedArea === area.id ? `0 0 20px ${area.color}40` : 'none'
+              }}
+              onClick={() => setSelectedArea(selectedArea === area.id ? null : area.id)}
+            >
+              {/* Icon */}
+              <div 
+                className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl"
+                style={{
+                  backgroundColor: `${area.color}20`,
+                  border: `3px solid ${area.color}`
+                }}
+              >
+                {area.icon}
+              </div>
 
-        {activeTab === 'missions' && (
-          <div className="epic-card p-6">
-            <h3 className="epic-title text-2xl mb-6 text-levelUp">MISIONES DIARIAS</h3>
-            <div className="grid gap-4">
-              {dailyMissions.map((mission) => (
-                <div
-                  key={mission.id}
-                  className={`epic-card p-4 transition-all duration-300 ${
-                    mission.completed ? 'border-neonGreen/50' : 'border-neonSystem/30'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center"
-                        style={{
-                          backgroundColor: getMissionColor(mission.type) + '20',
-                          border: `2px solid ${getMissionColor(mission.type)}`
-                        }}
-                      >
-                        <span className="text-xl">{getMissionIcon(mission.type)}</span>
-                      </div>
-                      <div>
-                        <h4 className="epic-title text-lg text-neonSystem">
-                          {mission.title}
-                        </h4>
-                        <p className="system-text text-sm text-neonSystem/70">
-                          {mission.description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="system-text text-sm text-neonGreen font-semibold">
-                        {mission.reward}
-                      </p>
-                      <p className="system-text text-xs text-neonSystem/60">
-                        {mission.progress}/{mission.maxProgress}
-                      </p>
-                    </div>
+              {/* Title */}
+              <h3 className="epic-title text-2xl mb-3 text-neonSystem">
+                {area.name}
+              </h3>
+
+              {/* Description */}
+              <p className="system-text text-sm text-neonSystem/70 mb-4 h-12">
+                {area.description}
+              </p>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-dungeon rounded-full h-3 mb-4">
+                <div 
+                  className="h-3 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${area.progress}%`,
+                    backgroundColor: area.color,
+                    boxShadow: `0 0 8px ${area.color}40`
+                  }}
+                ></div>
+              </div>
+
+              {/* Stats Row */}
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-center">
+                  <div className="system-text text-lg font-bold" style={{ color: area.color }}>
+                    {area.completedQuestions}
                   </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="w-full bg-dungeon rounded-full h-3 mb-3">
-                    <div 
-                      className="h-3 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${(mission.progress / mission.maxProgress) * 100}%`,
-                        backgroundColor: getMissionColor(mission.type),
-                        boxShadow: `0 0 8px ${getMissionColor(mission.type)}40`
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Status */}
-                  <div className="flex justify-between items-center">
-                    <span className={`system-text text-sm ${
-                      mission.completed ? 'text-neonGreen' : 'text-neonSystem/60'
-                    }`}>
-                      {mission.completed ? '✅ Completada' : '⏳ En progreso'}
-                    </span>
-                    {mission.completed && (
-                      <button className="btn-primary px-4 py-2 text-sm">
-                        Reclamar Recompensa
-                      </button>
-                    )}
+                  <div className="system-text text-xs text-neonSystem/60">
+                    de {area.totalQuestions}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'areas' && (
-          <div className="epic-card p-6">
-            <h3 className="epic-title text-2xl mb-6 text-levelUp">ÁREAS DE CONOCIMIENTO</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { name: 'Álgebra City', icon: '🏙️', progress: 75, color: '#00D9FF' },
-                { name: 'Geometry Caverns', icon: '🏔️', progress: 60, color: '#39FF14' },
-                { name: 'Trigonometry Tower', icon: '🗼', progress: 45, color: '#FFA500' },
-                { name: 'Calculus Castle', icon: '🏰', progress: 30, color: '#9333EA' },
-                { name: 'Statistics Station', icon: '📊', progress: 80, color: '#FFD700' },
-                { name: 'Probability Portal', icon: '🌀', progress: 25, color: '#FF0044' }
-              ].map((area, index) => (
-                <div key={index} className="epic-card p-4 text-center group hover:scale-105 transition-transform duration-300">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl">
-                    {area.icon}
+                <div className="text-center">
+                  <div className="system-text text-lg font-bold text-neonGreen">
+                    {area.averageScore}%
                   </div>
-                  <h4 className="epic-title text-lg mb-3 text-neonSystem">
-                    {area.name}
-                  </h4>
-                  <div className="w-full bg-dungeon rounded-full h-2 mb-3">
-                    <div 
-                      className="h-2 rounded-full transition-all duration-500"
-                      style={{
-                        width: `${area.progress}%`,
-                        backgroundColor: area.color,
-                        boxShadow: `0 0 8px ${area.color}40`
-                      }}
-                    ></div>
+                  <div className="system-text text-xs text-neonSystem/60">
+                    Precisión
                   </div>
-                  <p className="system-text text-sm text-neonSystem/70">
-                    {area.progress}% completado
-                  </p>
-                  <Link 
-                    href={`/practice/area/${index}`}
-                    className="btn-secondary mt-3 px-4 py-2 text-sm w-full"
+                </div>
+                <div className="text-center">
+                  <div 
+                    className="system-text text-xs font-bold px-2 py-1 rounded"
+                    style={{
+                      color: getDifficultyColor(area.difficulty),
+                      backgroundColor: `${getDifficultyColor(area.difficulty)}20`
+                    }}
                   >
-                    Explorar
-                  </Link>
+                    {area.difficulty}
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Action Button */}
+              <Link 
+                href={`/prueba/${area.id}`}
+                className="btn-primary w-full py-3 text-lg font-bold rounded-lg epic-title tracking-wider"
+                style={{
+                  backgroundColor: `${area.color}20`,
+                  borderColor: area.color,
+                  color: area.color
+                }}
+              >
+                PRACTICAR {area.name.toUpperCase()}
+              </Link>
+
+              {/* Expanded Content */}
+              {selectedArea === area.id && (
+                <div className="mt-6 pt-6 border-t border-neonSystem/20">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="system-text text-neonSystem/60">Progreso</div>
+                      <div className="epic-title text-lg" style={{ color: area.color }}>
+                        {area.progress}%
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="system-text text-neonSystem/60">Mejor Racha</div>
+                      <div className="epic-title text-lg text-neonGreen">
+                        {Math.floor(Math.random() * 20) + 5} días
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Link 
+                      href={`/prueba/${area.id}`}
+                      className="btn-secondary flex-1 py-2 text-sm"
+                    >
+                      Quiz Rápido
+                    </Link>
+                    <Link 
+                      href={`/prueba/completa`}
+                      className="btn-primary flex-1 py-2 text-sm"
+                    >
+                      Simulacro
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-12 text-center">
+          <h3 className="epic-title text-2xl mb-6 text-levelUp">ACCIONES RÁPIDAS</h3>
+          <div className="flex flex-col md:flex-row gap-4 justify-center">
+            <Link 
+              href="/prueba/completa"
+              className="btn-primary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider bg-gradient-to-r from-levelUp to-neonCyan"
+            >
+              🏗️ SIMULACRO COMPLETO ICFES
+            </Link>
+            <Link 
+              href="/learning-path"
+              className="btn-secondary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider"
+            >
+              🎓 CREAR PLAN DE APRENDIZAJE
+            </Link>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

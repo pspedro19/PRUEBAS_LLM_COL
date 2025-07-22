@@ -1,241 +1,169 @@
 'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import EpicNavigation from '@/components/EpicNavigation';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
+import Link from 'next/link'
+import EpicNavigation from '@/components/EpicNavigation'
 
-const ROLES = [
-  {
-    id: 'TANK',
-    name: 'Guardián de la Torre',
-    icon: '🛡️',
-    color: 'from-blue-500 to-cyan-500',
-    description: 'Defensor resistente que protege y persevera ante los desafíos más difíciles.',
-  },
-  {
-    id: 'DPS',
-    name: 'Conquistador Épico',
-    icon: '⚔️',
-    color: 'from-red-500 to-orange-500',
-    description: 'Atacante feroz que busca la perfección y domina con velocidad.',
-  },
-  {
-    id: 'SUPPORT',
-    name: 'Sabio Colaborativo',
-    icon: '💫',
-    color: 'from-green-500 to-emerald-500',
-    description: 'Estratega empático que fortalece el conocimiento colectivo.',
-  },
-  {
-    id: 'SPECIALIST',
-    name: 'Maestro Analítico',
-    icon: '🎯',
-    color: 'from-purple-500 to-violet-500',
-    description: 'Experto meticuloso que desentraña los misterios más complejos.',
-  },
-];
+export default function WelcomePage() {
+  const [currentStage, setCurrentStage] = useState(0)
+  const router = useRouter()
+  const { user, logout } = useAuth()
 
-export default function OnboardingWelcomePage() {
-  const [isRandomizing, setIsRandomizing] = useState(false);
-  const [selectedRandomRole, setSelectedRandomRole] = useState<string | null>(null);
-  const router = useRouter();
-  const { user, refreshUserData } = useAuth();
-
-  const selectRandomRole = async () => {
-    setIsRandomizing(true);
-    
-    // Epic animation for random selection
-    let count = 0;
-    
-    const interval = setInterval(() => {
-      setSelectedRandomRole(ROLES[Math.floor(Math.random() * ROLES.length)].id);
-      count++;
-      
-      if (count > 20) { // After 20 iterations (2 seconds)
-        clearInterval(interval);
-        const finalRole = ROLES[Math.floor(Math.random() * ROLES.length)].id;
-        setSelectedRandomRole(finalRole);
-        setIsRandomizing(false);
-        
-        // Auto-confirm after showing result
-        setTimeout(() => {
-          completeRandomAssessment(finalRole);
-        }, 2000);
-      }
-    }, 100);
-  };
-
-  const completeRandomAssessment = async (roleId: string) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        const response = await fetch('http://localhost:8000/api/auth/complete-assessment/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            assessment_type: 'vocational',
-            assigned_role: roleId,
-            method: 'random'
-          })
-        });
-        
-        if (response.ok) {
-          await refreshUserData();
-          router.push('/dashboard');
-        } else {
-          console.error('Error saving random role selection');
-        }
-      }
-    } catch (error) {
-      console.error('Error completing random assessment:', error);
+  const stages = [
+    {
+      title: "¡Bienvenido a la Torre de Babel ICFES!",
+      subtitle: "Tu aventura épica está a punto de comenzar",
+      description: "Antes de acceder al sistema completo, necesitamos conocerte mejor para personalizar tu experiencia de aprendizaje.",
+      icon: "🏗️"
+    },
+    {
+      title: "¿Qué es la Evaluación Vocacional?",
+      subtitle: "Descubre tu rol académico ideal",
+      description: "Responderás 8 preguntas que determinarán si eres un Tanque (resistente), DPS (rápido), Soporte (colaborativo) o Especialista (analítico).",
+      icon: "🎯"
+    },
+    {
+      title: "¿Por qué es importante?",
+      subtitle: "Personalización total de tu experiencia",
+      description: "Tu rol determinará las estrategias de estudio recomendadas, el tipo de contenido que verás primero, y cómo el sistema IA adaptará el aprendizaje a tu estilo.",
+      icon: "🧠"
     }
-  };
+  ]
+
+  const handleNext = () => {
+    if (currentStage < stages.length - 1) {
+      setCurrentStage(currentStage + 1)
+    } else {
+      router.push('/onboarding/role-assessment')
+    }
+  }
+
+  const handleSkip = () => {
+    router.push('/onboarding/role-selection')
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-epic">
-      <div className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="w-24 h-24 bg-gradient-system rounded-full flex items-center justify-center mx-auto mb-6 epic-shadow">
-            <span className="text-4xl">🎯</span>
-          </div>
-          
-          <h1 className="epic-title text-4xl lg:text-5xl mb-6 text-neonSystem system-glow">
-            ¡Bienvenido a la Torre de Babel!
-          </h1>
-          
-          <div className="max-w-3xl mx-auto epic-card p-6 mb-8">
-            <p className="text-lg text-neonSystem/90 mb-4">
-              <span className="text-neonCyan font-bold">¡Hola {user?.full_name || 'Héroe'}!</span> 
-              Antes de comenzar tu épica aventura en la Torre de Babel, necesitamos descubrir 
-              tu <span className="text-levelUp font-bold">Rol de Batalla</span> ideal.
-            </p>
-            <p className="text-neonSystem/80">
-              Tu rol determinará tu estrategia de estudio, fortalezas naturales y el camino 
-              hacia convertirte en el <span className="text-neonCyan">Arquitecto Supremo</span>.
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-abyss via-dungeon to-abyss relative">
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-neonSystem rounded-full animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-neonCyan rounded-full animate-pulse delay-300"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-3 h-3 bg-neonSystem rounded-full animate-pulse delay-700"></div>
+      </div>
+
+      {/* Header con información del usuario */}
+      <header className="relative z-20 border-b border-neonSystem/30 bg-abyss/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-system rounded-lg flex items-center justify-center">
+                <span className="text-xl">🏗️</span>
+              </div>
+              <div>
+                <h1 className="epic-title text-lg text-neonSystem">EVALUACIÓN INICIAL</h1>
+                <p className="system-text text-xs text-neonSystem/70">Configurando tu perfil académico</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {user && (
+                <div className="text-right">
+                  <p className="system-text text-sm text-neonSystem font-bold">
+                    {user.full_name || user.email.split('@')[0]}
+                  </p>
+                  <p className="system-text text-xs text-neonSystem/60">
+                    Configuración pendiente
+                  </p>
+                </div>
+              )}
+              <button
+                onClick={logout}
+                className="text-xs text-neonSystem/70 hover:text-neonSystem transition-colors duration-300 px-3 py-2 rounded border border-neonSystem/30 hover:border-neonSystem/60"
+              >
+                🚪 SALIR
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Role Preview */}
-        <div className="mb-12">
-          <h2 className="epic-title text-2xl text-center mb-8 text-neonSystem">
-            Los Cuatro Roles de Batalla
-          </h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {ROLES.map((role) => (
-              <div key={role.id} className="epic-card p-6 text-center hover:scale-105 transition-transform duration-300">
-                <div className={`w-16 h-16 bg-gradient-to-r ${role.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                  <span className="text-3xl">{role.icon}</span>
-                </div>
-                <h3 className="epic-title text-lg mb-3 text-neonSystem">{role.name}</h3>
-                <p className="text-sm text-neonSystem/70">{role.description}</p>
-              </div>
+      <div className="relative z-10 p-4 pb-24 flex items-center justify-center min-h-screen">
+        <div className="epic-card p-8 neon-border max-w-2xl w-full text-center">
+          {/* Progress indicators */}
+          <div className="flex justify-center mb-8">
+            {stages.map((_, index) => (
+              <div
+                key={index}
+                className={`w-3 h-3 rounded-full mx-1 transition-all duration-300 ${
+                  index <= currentStage ? 'bg-neonSystem shadow-effect' : 'bg-dungeon/50'
+                }`}
+              />
             ))}
           </div>
-        </div>
 
-        {/* Random Selection in Progress */}
-        {isRandomizing && (
+          {/* Current stage content */}
           <div className="mb-8">
-            <div className="epic-card p-8 text-center">
-              <div className="w-20 h-20 bg-gradient-system rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                {selectedRandomRole && (
-                  <span className="text-4xl">
-                    {ROLES.find(r => r.id === selectedRandomRole)?.icon}
-                  </span>
-                )}
-              </div>
-              <h3 className="epic-title text-2xl mb-4 text-neonCyan">
-                🎲 Los dioses están decidiendo...
-              </h3>
-              <p className="text-neonSystem/80">
-                El destino está eligiendo tu rol de batalla perfecto
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Selection Methods */}
-        {!isRandomizing && (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="epic-title text-3xl text-center mb-8 text-neonSystem">
-              Elige tu Método de Evaluación
+            <div className="text-6xl mb-6">{stages[currentStage].icon}</div>
+            <h2 className="epic-title text-3xl mb-4 text-neonSystem">
+              {stages[currentStage].title}
             </h2>
+            <h3 className="text-xl mb-4 text-neonCyan">
+              {stages[currentStage].subtitle}
+            </h3>
+            <p className="system-text text-lg text-neonSystem/80 leading-relaxed max-w-lg mx-auto">
+              {stages[currentStage].description}
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="space-y-4">
+            <button
+              onClick={handleNext}
+              className="w-full py-4 bg-gradient-system text-abyss font-bold text-lg rounded-lg hover:shadow-effect transition-all duration-300"
+            >
+              {currentStage < stages.length - 1 ? 'CONTINUAR' : 'COMENZAR EVALUACIÓN'}
+            </button>
             
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Automatic Survey */}
-              <div className="epic-card p-6 text-center hover:scale-105 transition-all duration-300 hover:border-neonSystem/50">
-                <div className="w-16 h-16 bg-gradient-to-r from-neonCyan to-neonSystem rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📊</span>
-                </div>
-                <h3 className="epic-title text-xl mb-4 text-neonCyan">Encuesta Automática</h3>
-                <p className="text-neonSystem/80 text-sm mb-6">
-                  Responde 8 preguntas estratégicas y nuestro algoritmo determinará tu rol ideal basado en tu personalidad y estilo de aprendizaje.
-                </p>
-                <button
-                  onClick={() => router.push('/onboarding/role-assessment')}
-                  className="w-full py-3 bg-gradient-to-r from-neonCyan to-neonSystem text-abyss font-bold rounded-lg hover:shadow-effect transition-all duration-300"
-                >
-                  Comenzar Encuesta 🚀
-                </button>
-              </div>
-
-              {/* Manual Selection */}
-              <div className="epic-card p-6 text-center hover:scale-105 transition-all duration-300 hover:border-levelUp/50">
-                <div className="w-16 h-16 bg-gradient-to-r from-levelUp to-neonGreen rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <h3 className="epic-title text-xl mb-4 text-levelUp">Selección Manual</h3>
-                <p className="text-neonSystem/80 text-sm mb-6">
-                  Explora los cuatro roles en detalle y elige el que más resuene con tu personalidad y objetivos académicos.
-                </p>
-                <button
-                  onClick={() => router.push('/onboarding/role-selection')}
-                  className="w-full py-3 bg-gradient-to-r from-levelUp to-neonGreen text-abyss font-bold rounded-lg hover:shadow-effect transition-all duration-300"
-                >
-                  Elegir Manualmente ⚔️
-                </button>
-              </div>
-
-              {/* Random Selection */}
-              <div className="epic-card p-6 text-center hover:scale-105 transition-all duration-300 hover:border-brightPurple/50">
-                <div className="w-16 h-16 bg-gradient-to-r from-brightPurple to-neonMagenta rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🎲</span>
-                </div>
-                <h3 className="epic-title text-xl mb-4 text-brightPurple">Destino Aleatorio</h3>
-                <p className="text-neonSystem/80 text-sm mb-6">
-                  Deja que el destino decida tu rol. ¡A veces las mejores aventuras comienzan con lo inesperado!
-                </p>
-                <button
-                  onClick={selectRandomRole}
-                  className="w-full py-3 bg-gradient-to-r from-brightPurple to-neonMagenta text-abyss font-bold rounded-lg hover:shadow-effect transition-all duration-300"
-                >
-                  Confiar en el Destino 🌟
-                </button>
-              </div>
-            </div>
-
-            {/* Note about requirement */}
-            <div className="mt-8 text-center">
-              <div className="epic-card p-4 bg-dungeon/50 border border-brightRed/30">
-                <p className="text-neonSystem/80 text-sm">
-                  <span className="text-brightRed font-bold">⚠️ Requerido:</span> 
-                  Debes completar este paso para acceder a todas las funciones de la Torre de Babel. 
-                  ¡Pero no te preocupes, podrás cambiar tu rol más tarde desde tu perfil!
-                </p>
-              </div>
+            <div className="flex gap-4">
+              <button
+                onClick={handleSkip}
+                className="flex-1 py-3 bg-dungeon/50 border border-neonSystem/30 text-neonSystem font-bold rounded-lg hover:bg-dungeon/70 transition-all duration-300"
+              >
+                ELEGIR ROL MANUALMENTE
+              </button>
+              
+              <Link
+                href="/onboarding/role-selection"
+                className="flex-1 py-3 bg-dungeon/30 border border-neonCyan/30 text-neonCyan font-bold rounded-lg hover:bg-dungeon/50 transition-all duration-300 flex items-center justify-center"
+              >
+                ROL AL AZAR
+              </Link>
             </div>
           </div>
-        )}
+
+          {/* Help text */}
+          <div className="mt-8 p-4 bg-neonSystem/10 border border-neonSystem/20 rounded-lg">
+            <p className="system-text text-sm text-neonSystem/70">
+              💡 <strong>¿Por qué estoy aquí?</strong> Has iniciado sesión exitosamente, pero necesitas completar 
+              tu evaluación vocacional para acceder al sistema completo con las 2 secciones principales: 
+              Sistema de Quiz y Plan de Aprendizaje IA.
+            </p>
+          </div>
+
+          {/* Emergency exit */}
+          <div className="mt-6">
+            <button
+              onClick={logout}
+              className="text-sm text-neonSystem/50 hover:text-neonSystem/80 transition-colors duration-300"
+            >
+              🔙 Volver al login principal
+            </button>
+          </div>
+        </div>
       </div>
 
       <EpicNavigation />
     </div>
-  );
+  )
 } 

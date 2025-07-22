@@ -7,7 +7,7 @@ from .views import (
     UserProfileView, PasswordChangeView, SchoolListView,
     UniversityListView, UserStatsView, add_experience,
     health_check, CheckUsernameView, CheckEmailView,
-    complete_assessment
+    complete_assessment, update_user_progress
 )
 
 app_name = 'users'
@@ -28,6 +28,7 @@ urlpatterns = [
     path('stats/', UserStatsView.as_view(), name='user_stats'),
     path('add-experience/', add_experience, name='add_experience'),
     path('complete-assessment/', complete_assessment, name='complete_assessment'),
+    path('update-progress/', update_user_progress, name='update_progress'),
     
     # Validaciones
     path('check-username/', CheckUsernameView.as_view(), name='check_username'),

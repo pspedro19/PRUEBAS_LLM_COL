@@ -28,7 +28,7 @@ urlpatterns = [
     path('api/schools/', include('apps.schools.urls')),
     path('api/content/', include('apps.content.urls')),
     path('api/ai-llm/', include('apps.ai_llm.urls')),
-    # path('api/learning/', include('apps.learning.urls')),
+    path('api/learning/', include('apps.learning.urls')),
     
     # Health check
     path('health/', include('apps.users.urls', namespace='health')),  # Reutilizamos el health check de users

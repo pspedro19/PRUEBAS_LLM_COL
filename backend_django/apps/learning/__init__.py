@@ -1,3 +1,1 @@
-"""
-App de Learning Paths para Ciudadela del Conocimiento ICFES
-""" 
+# Learning app para Sistema de Learning Paths Dinámicos 

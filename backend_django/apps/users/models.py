@@ -204,7 +204,7 @@ class UserProfile(models.Model):
         if self.total_questions_answered == 0:
             return 0.0
         return (self.total_correct_answers / self.total_questions_answered) * 100
-    
+
     def regenerate_vitality(self):
         """Regenera vitalidad basada en el tiempo transcurrido"""
         from django.utils import timezone
@@ -212,13 +212,56 @@ class UserProfile(models.Model):
         
         now = timezone.now()
         time_diff = now - self.last_vitality_update
+        
+        # Regenerar 1 punto de vitalidad cada 10 minutos (máximo 100)
         minutes_passed = time_diff.total_seconds() / 60
+        vitality_to_add = int(minutes_passed / 10)
         
-        # Regenerar 1 punto de vitalidad por minuto
-        vitality_to_add = int(minutes_passed)
-        if vitality_to_add > 0:
-            self.current_vitality = min(100, self.current_vitality + vitality_to_add)
-            self.last_vitality_update = now
-            self.save()
+        if vitality_to_add > 0 and self.current_vitality < 100:
+            new_vitality = min(self.current_vitality + vitality_to_add, 100)
+            if new_vitality != self.current_vitality:
+                self.current_vitality = new_vitality
+                self.last_vitality_update = now
+                self.save(update_fields=['current_vitality', 'last_vitality_update'])
         
-        return self.current_vitality 
+        return self.current_vitality
+    
+    def consume_vitality(self, amount):
+        """Consume vitalidad (para actividades como responder preguntas)"""
+        if self.current_vitality >= amount:
+            self.current_vitality -= amount
+            self.save(update_fields=['current_vitality'])
+            return True
+        return False
+    
+    def update_streak(self, activity_date=None):
+        """Actualiza la racha de días consecutivos"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if activity_date is None:
+            activity_date = timezone.now().date()
+        
+        # Obtener la última actividad (simplificado - en producción esto sería más complejo)
+        # Por ahora usamos last_vitality_update como proxy de última actividad
+        last_activity_date = self.last_vitality_update.date() if self.last_vitality_update else None
+        
+        if last_activity_date:
+            days_diff = (activity_date - last_activity_date).days
+            
+            if days_diff == 1:
+                # Actividad consecutiva
+                self.current_streak += 1
+                if self.current_streak > self.max_streak:
+                    self.max_streak = self.current_streak
+            elif days_diff > 1:
+                # Se rompió la racha
+                self.current_streak = 1
+            # Si days_diff == 0, es el mismo día, no cambiar la racha
+        else:
+            # Primera actividad
+            self.current_streak = 1
+            self.max_streak = 1
+        
+        self.save(update_fields=['current_streak', 'max_streak'])
+        return self.current_streak 
