@@ -1,13 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://backend:8000/api/:path*'
-      }
-    ]
-  },
+  // Removed rewrites to prevent conflicts with frontend API routes
+  // Frontend will use NEXT_PUBLIC_API_URL to call backend directly
+  
   // Add webpack configuration for better development experience
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {

@@ -1,0 +1,362 @@
+# ========================================
+# TEMPLATES DE LEARNING PATHS - MATEMÁTICAS
+# ========================================
+
+# TEMPLATE 1: PLAN BÁSICO - Para estudiantes con fundamentos débiles
+basic_mathematics_path:
+  metadata:
+    name: "Plan Básico de Matemáticas ICFES"
+    description: "Fortalece los fundamentos matemáticos desde cero"
+    difficulty: "BASICO"
+    estimated_hours: 40
+    weekly_hours: 6
+    color_theme: "#4F46E5"  # Indigo
+    icon: "🧮"
+    target_score_range: [0, 45]
+    
+  criteria:
+    - weak_areas_threshold: 0.4  # 40% o menos de acierto
+    - focus_topics: ["aritmetica", "algebra_basica", "geometria_plana"]
+    - learning_style: "guided"
+    - practice_intensity: "high"
+    
+  units:
+    - id: 1
+      title: "Fundamentos Aritméticos"
+      description: "Operaciones básicas y propiedades numéricas"
+      icon: "🔢"
+      estimated_duration: 300  # minutos
+      xp_reward: 150
+      topics:
+        - "Operaciones con números enteros"
+        - "Fracciones y decimales"
+        - "Porcentajes y proporciones"
+        - "Problemas de aplicación"
+      lessons:
+        - title: "Números enteros y operaciones"
+          type: "VIDEO"
+          duration: 25
+          content_url: "/content/aritmetica/enteros"
+        - title: "Práctica: Operaciones básicas"
+          type: "PRACTICE"
+          duration: 35
+          questions_count: 15
+        - title: "Fracciones paso a paso"
+          type: "INTERACTIVE"
+          duration: 30
+          
+    - id: 2
+      title: "Álgebra Elemental"
+      description: "Introducción a variables y ecuaciones simples"
+      icon: "📐"
+      estimated_duration: 360
+      xp_reward: 180
+      topics:
+        - "Variables y expresiones algebraicas"
+        - "Ecuaciones lineales simples"
+        - "Factorización básica"
+        - "Sistemas de ecuaciones 2x2"
+      lessons:
+        - title: "¿Qué es una variable?"
+          type: "VIDEO"
+          duration: 20
+        - title: "Resolviendo ecuaciones simples"
+          type: "GUIDED_PRACTICE"
+          duration: 40
+        - title: "Evaluación: Álgebra básica"
+          type: "ASSESSMENT"
+          duration: 25
+          
+    - id: 3
+      title: "Geometría Plana Básica"
+      description: "Figuras, perímetros y áreas fundamentales"
+      icon: "📏"
+      estimated_duration: 280
+      xp_reward: 140
+      topics:
+        - "Figuras geométricas básicas"
+        - "Perímetros y áreas"
+        - "Teorema de Pitágoras"
+        - "Semejanza y congruencia"
+        
+    - id: 4
+      title: "Razones y Proporciones"
+      description: "Aplicaciones prácticas de proporcionalidad"
+      icon: "⚖️"
+      estimated_duration: 240
+      xp_reward: 120
+      
+    - id: 5
+      title: "Estadística Descriptiva"
+      description: "Medidas de tendencia central"
+      icon: "📊"
+      estimated_duration: 260
+      xp_reward: 130
+      
+    - id: 6
+      title: "Probabilidad Básica"
+      description: "Conceptos fundamentales de probabilidad"
+      icon: "🎲"
+      estimated_duration: 220
+      xp_reward: 110
+      
+    - id: 7
+      title: "Funciones Lineales"
+      description: "Introducción a funciones y gráficas"
+      icon: "📈"
+      estimated_duration: 300
+      xp_reward: 150
+      
+    - id: 8
+      title: "Repaso Integral y Simulacro"
+      description: "Consolidación y práctica tipo ICFES"
+      icon: "🎯"
+      estimated_duration: 180
+      xp_reward: 200
+
+# ========================================
+# TEMPLATE 2: PLAN INTERMEDIO - Para estudiantes con base sólida
+# ========================================
+
+intermediate_mathematics_path:
+  metadata:
+    name: "Plan Intermedio de Matemáticas ICFES"
+    description: "Perfecciona habilidades y técnicas matemáticas"
+    difficulty: "MEDIO"
+    estimated_hours: 35
+    weekly_hours: 5
+    color_theme: "#059669"  # Green
+    icon: "📚"
+    target_score_range: [46, 70]
+    
+  criteria:
+    - weak_areas_threshold: 0.6  # 60% o menos de acierto
+    - focus_topics: ["algebra_avanzada", "geometria_analitica", "trigonometria"]
+    - learning_style: "self_directed"
+    - practice_intensity: "medium"
+    
+  units:
+    - id: 1
+      title: "Álgebra Avanzada"
+      description: "Ecuaciones cuadráticas y polinomios"
+      icon: "🔺"
+      estimated_duration: 280
+      xp_reward: 140
+      topics:
+        - "Ecuaciones cuadráticas"
+        - "Factorización avanzada"
+        - "Funciones polinómicas"
+        - "Desigualdades"
+        
+    - id: 2
+      title: "Geometría Analítica"
+      description: "Coordenadas, rectas y circunferencias"
+      icon: "📐"
+      estimated_duration: 300
+      xp_reward: 150
+      topics:
+        - "Sistema de coordenadas"
+        - "Ecuación de la recta"
+        - "Circunferencia y parábola"
+        - "Distancias y áreas"
+        
+    - id: 3
+      title: "Trigonometría Básica"
+      description: "Razones trigonométricas y aplicaciones"
+      icon: "📐"
+      estimated_duration: 320
+      xp_reward: 160
+      
+    - id: 4
+      title: "Logaritmos y Exponenciales"
+      description: "Funciones exponenciales y logarítmicas"
+      icon: "📊"
+      estimated_duration: 260
+      xp_reward: 130
+      
+    - id: 5
+      title: "Estadística Avanzada"
+      description: "Distribuciones y análisis de datos"
+      icon: "📈"
+      estimated_duration: 280
+      xp_reward: 140
+      
+    - id: 6
+      title: "Probabilidad Condicional"
+      description: "Eventos dependientes e independientes"
+      icon: "🎲"
+      estimated_duration: 240
+      xp_reward: 120
+      
+    - id: 7
+      title: "Optimización y Límites"
+      description: "Introducción al cálculo diferencial"
+      icon: "∞"
+      estimated_duration: 300
+      xp_reward: 150
+      
+    - id: 8
+      title: "Simulacro Avanzado ICFES"
+      description: "Examen completo con análisis detallado"
+      icon: "🏆"
+      estimated_duration: 200
+      xp_reward: 250
+
+# ========================================
+# TEMPLATE 3: PLAN AVANZADO - Para estudiantes de alto rendimiento
+# ========================================
+
+advanced_mathematics_path:
+  metadata:
+    name: "Plan Avanzado de Matemáticas ICFES"
+    description: "Dominio completo y estrategias de alto nivel"
+    difficulty: "AVANZADO"
+    estimated_hours: 30
+    weekly_hours: 4
+    color_theme: "#DC2626"  # Red
+    icon: "🎓"
+    target_score_range: [71, 100]
+    
+  criteria:
+    - weak_areas_threshold: 0.8  # 80% o menos de acierto
+    - focus_topics: ["calculo", "algebra_lineal", "estadistica_inferencial"]
+    - learning_style: "mastery_based"
+    - practice_intensity: "precision"
+    
+  units:
+    - id: 1
+      title: "Cálculo Diferencial"
+      description: "Límites, derivadas y aplicaciones"
+      icon: "∂"
+      estimated_duration: 240
+      xp_reward: 200
+      topics:
+        - "Límites y continuidad"
+        - "Derivadas y reglas"
+        - "Aplicaciones de derivadas"
+        - "Optimización avanzada"
+        
+    - id: 2
+      title: "Álgebra Lineal"
+      description: "Matrices, vectores y transformaciones"
+      icon: "🔢"
+      estimated_duration: 260
+      xp_reward: 220
+      topics:
+        - "Sistemas lineales complejos"
+        - "Matrices y determinantes"
+        - "Vectores en el plano"
+        - "Transformaciones lineales"
+        
+    - id: 3
+      title: "Trigonometría Avanzada"
+      description: "Identidades, ecuaciones e inverses"
+      icon: "sin"
+      estimated_duration: 220
+      xp_reward: 180
+      
+    - id: 4
+      title: "Geometría Espacial"
+      description: "Volúmenes, superficies y coordenadas 3D"
+      icon: "📦"
+      estimated_duration: 240
+      xp_reward: 200
+      
+    - id: 5
+      title: "Estadística Inferencial"
+      description: "Intervalos de confianza y pruebas de hipótesis"
+      icon: "📊"
+      estimated_duration: 280
+      xp_reward: 240
+      
+    - id: 6
+      title: "Combinatoria y Permutaciones"
+      description: "Técnicas avanzadas de conteo"
+      icon: "🔄"
+      estimated_duration: 200
+      xp_reward: 160
+      
+    - id: 7
+      title: "Análisis de Funciones"
+      description: "Comportamiento y características avanzadas"
+      icon: "📈"
+      estimated_duration: 220
+      xp_reward: 180
+      
+    - id: 8
+      title: "Masterclass ICFES"
+      description: "Estrategias avanzadas y trucos de examen"
+      icon: "💎"
+      estimated_duration: 180
+      xp_reward: 300
+
+# ========================================
+# CONFIGURACIÓN DE ASIGNACIÓN AUTOMÁTICA
+# ========================================
+
+assignment_rules:
+  score_based:
+    - range: [0, 45]
+      template: "basic_mathematics_path"
+      message: "Fortalecemos tus fundamentos matemáticos paso a paso"
+      
+    - range: [46, 70] 
+      template: "intermediate_mathematics_path"
+      message: "Perfeccionamos tus habilidades matemáticas existentes"
+      
+    - range: [71, 100]
+      template: "advanced_mathematics_path" 
+      message: "Llevamos tu dominio matemático al siguiente nivel"
+      
+  weak_areas_based:
+    aritmetica: "basic_mathematics_path"
+    algebra_basica: "basic_mathematics_path"
+    algebra_avanzada: "intermediate_mathematics_path"
+    geometria_plana: "basic_mathematics_path"
+    geometria_analitica: "intermediate_mathematics_path"
+    trigonometria: "intermediate_mathematics_path"
+    calculo: "advanced_mathematics_path"
+    estadistica_basica: "basic_mathematics_path"
+    estadistica_avanzada: "intermediate_mathematics_path"
+    probabilidad: "intermediate_mathematics_path"
+
+# ========================================
+# CONFIGURACIÓN DE UI/FRONTEND
+# ========================================
+
+ui_configuration:
+  card_styles:
+    basic:
+      background: "gradient-to-br from-indigo-500 to-purple-600"
+      text_color: "text-white"
+      button_style: "bg-indigo-600 hover:bg-indigo-700"
+      progress_color: "bg-indigo-400"
+      
+    intermediate:
+      background: "gradient-to-br from-green-500 to-emerald-600"
+      text_color: "text-white"
+      button_style: "bg-green-600 hover:bg-green-700"
+      progress_color: "bg-green-400"
+      
+    advanced:
+      background: "gradient-to-br from-red-500 to-pink-600"
+      text_color: "text-white"
+      button_style: "bg-red-600 hover:bg-red-700"
+      progress_color: "bg-red-400"
+      
+  progress_indicators:
+    unit_progress:
+      type: "circular"
+      show_percentage: true
+      animation: "smooth"
+      
+    overall_progress:
+      type: "linear"
+      show_steps: true
+      milestone_rewards: true
+      
+  navigation:
+    expandable_units: true
+    breadcrumb_navigation: true
+    quick_access_menu: true
+    search_functionality: true 

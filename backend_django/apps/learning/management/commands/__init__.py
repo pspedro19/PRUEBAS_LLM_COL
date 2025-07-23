@@ -1,1 +1,1 @@
-# Management commands for learning app 
+# Django management commands 

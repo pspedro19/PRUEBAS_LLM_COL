@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1]
     
     // Hacer petición al backend Django
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/learning/path/`, {
+    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/learning/metrics/`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -34,13 +34,12 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      activePath: data.activePath,
-      needsDiagnostic: data.needsDiagnostic,
-      message: data.message
+      metrics: data.metrics,
+      currentStreak: data.metrics?.currentStreak || 0
     })
 
   } catch (error) {
-    console.error('Error en /api/learning/path:', error)
+    console.error('Error en /api/learning/metrics:', error)
     return NextResponse.json(
       { success: false, message: 'Error interno del servidor' },
       { status: 500 }

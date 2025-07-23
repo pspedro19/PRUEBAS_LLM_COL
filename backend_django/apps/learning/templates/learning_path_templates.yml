@@ -1,0 +1,165 @@
+# Plantillas de Planes de Aprendizaje ICFES
+# Sistema adaptativo basado en resultados del quiz diagnóstico
+
+templates:
+  mathematics:
+    weak_areas:
+      algebra_basica:
+        priority: 1
+        units:
+          - id: "math_fund_algebra"
+            title: "Fundamentos de Álgebra"
+            duration_hours: 8
+            content_types: ["video", "interactive", "practice"]
+            topics:
+              - variables_expresiones
+              - ecuaciones_lineales
+              - sistemas_ecuaciones
+            resources:
+              - type: "video"
+                url: "khan_academy_algebra_basics"
+                duration: 45
+              - type: "interactive"
+                provider: "geogebra"
+                widget_id: "algebra_explorer"
+              - type: "practice"
+                question_bank: "algebra_basic_icfes"
+                min_questions: 20
+                
+      geometria:
+        priority: 2
+        units:
+          - id: "math_fund_geometry"
+            title: "Geometría Fundamental"
+            duration_hours: 6
+            content_types: ["video", "3d_visualization", "practice"]
+            topics:
+              - areas_perimetros
+              - teorema_pitagoras
+              - figuras_3d
+              
+      trigonometria:
+        priority: 3
+        units:
+          - id: "math_fund_trig"
+            title: "Trigonometría Esencial"
+            duration_hours: 10
+            content_types: ["video", "interactive", "real_world"]
+            topics:
+              - razones_trigonometricas
+              - identidades_basicas
+              - aplicaciones_reales
+              
+  reading_critical:
+    weak_areas:
+      comprension_literal:
+        priority: 1
+        units:
+          - id: "reading_literal"
+            title: "Comprensión Literal"
+            duration_hours: 5
+            content_types: ["article", "quiz", "discussion"]
+            
+      inferencia_critica:
+        priority: 2
+        units:
+          - id: "reading_inference"
+            title: "Inferencia y Análisis Crítico"
+            duration_hours: 8
+            content_types: ["case_study", "debate", "essay"]
+            
+  natural_sciences:
+    weak_areas:
+      fisica_mecanica:
+        priority: 1
+        units:
+          - id: "physics_mechanics"
+            title: "Mecánica Fundamental"
+            duration_hours: 10
+            content_types: ["simulation", "lab", "problems"]
+            
+      quimica_organica:
+        priority: 2
+        units:
+          - id: "chemistry_organic"
+            title: "Química Orgánica Básica"
+            duration_hours: 8
+            content_types: ["3d_molecules", "virtual_lab", "practice"]
+
+# Configuración de unidades estándar (8 unidades)
+standard_learning_path:
+  unit_distribution:
+    - position: 1
+      type: "foundation"
+      weight: 0.15  # 15% del contenido
+      focus: "conceptos_basicos"
+      
+    - position: 2-3
+      type: "core_content"
+      weight: 0.30  # 30% del contenido
+      focus: "desarrollo_habilidades"
+      
+    - position: 4-5
+      type: "practice"
+      weight: 0.25  # 25% del contenido
+      focus: "aplicacion_problemas"
+      
+    - position: 6-7
+      type: "advanced"
+      weight: 0.20  # 20% del contenido
+      focus: "temas_complejos"
+      
+    - position: 8
+      type: "assessment"
+      weight: 0.10  # 10% del contenido
+      focus: "evaluacion_final"
+
+# Reglas de adaptación según puntaje
+adaptation_rules:
+  score_ranges:
+    critical: # 0-40 puntos
+      units_focus: [1, 2, 3, 4]  # Más tiempo en fundamentos
+      difficulty_start: "easy"
+      support_level: "high"
+      
+    low: # 41-60 puntos  
+      units_focus: [2, 3, 4, 5]  # Balance fundamentos-práctica
+      difficulty_start: "medium"
+      support_level: "medium"
+      
+    medium: # 61-80 puntos
+      units_focus: [3, 4, 5, 6]  # Más práctica y avanzado
+      difficulty_start: "medium"
+      support_level: "low"
+      
+    high: # 81-100 puntos
+      units_focus: [5, 6, 7, 8]  # Enfoque en temas avanzados
+      difficulty_start: "hard"
+      support_level: "minimal"
+
+# Proveedores de contenido
+content_providers:
+  video:
+    - name: "Khan Academy"
+      api_key: "${KHAN_ACADEMY_API_KEY}"
+      subjects: ["mathematics", "sciences"]
+      
+    - name: "YouTube Education"
+      channels:
+        - "JulioProfe"
+        - "Matemáticas profe Alex"
+        - "Educatina"
+        
+  interactive:
+    - name: "GeoGebra"
+      widget_types: ["calculator", "geometry", "3d"]
+      
+    - name: "PhET Simulations"
+      subjects: ["physics", "chemistry", "biology"]
+      
+  practice:
+    - name: "ICFES Question Bank"
+      source: "internal"
+      
+    - name: "Ejercicios.co"
+      api_endpoint: "https://api.ejercicios.co/v1/" 

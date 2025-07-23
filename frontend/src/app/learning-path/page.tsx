@@ -1,356 +1,417 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { 
+  Brain, 
+  Target, 
+  TrendingUp, 
+  Clock, 
+  Award,
+  BookOpen,
+  Video,
+  FileText,
+  Zap,
+  AlertCircle
+} from 'lucide-react'
+import { PathOverview } from '@/components/learning/PathOverview'
+import { UnitProgress } from '@/components/learning/UnitProgress'
+import { DailyStreak } from '@/components/learning/DailyStreak'
+import { SkillTree } from '@/components/learning/SkillTree'
+import { MetricsDashboard } from '@/components/learning/MetricsDashboard'
+import { ContentRecommendations } from '@/components/learning/ContentRecommendations'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-
-interface LearningPath {
-  id: string
-  name: string
-  description: string
-  totalWeeks: number
-  currentWeek: number
-  completionPercentage: number
-  estimatedHours: number
-  targetScore: number
-  createdBy: 'AI' | 'MANUAL'
-}
-
-interface StudyModule {
-  id: string
-  title: string
-  description: string
-  area: string
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
-  estimatedTime: number
-  priority: 'HIGH' | 'MEDIUM' | 'LOW'
-  completed: boolean
-  topics: string[]
-  resources: {
-    type: 'video' | 'practice' | 'reading' | 'quiz'
-    title: string
-    url: string
-    duration?: number
-  }[]
-  aiRecommendation: string
-}
-
-interface WeakArea {
-  subject: string
-  accuracy: number
-  recommendedTime: number
-  priority: number
-  icon: string
-  color: string
-}
+import { LearningPath, Unit, Lesson } from '@/types/learning'
 
 export default function LearningPathPage() {
-  const { user, loading } = useAuth()
   const router = useRouter()
-  const [currentPath, setCurrentPath] = useState<LearningPath | null>(null)
-  const [weeklyModules, setWeeklyModules] = useState<StudyModule[]>([])
-  const [weakAreas, setWeakAreas] = useState<WeakArea[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [pathExists, setPathExists] = useState(false)
+  const searchParams = useSearchParams()
+  const { user } = useAuth()
+  const [activePath, setActivePath] = useState<LearningPath | null>(null)
+  const [selectedUnit, setSelectedUnit] = useState<number>(0)
+  const [loading, setLoading] = useState(true)
+  const [metrics, setMetrics] = useState<any>(null)
+  const [streak, setStreak] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
+
+  // Obtener tipo de plan de los parámetros
+  const planType = searchParams.get('type') || 'default'
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/login')
-    } else if (user) {
+    if (user) {
       fetchLearningPath()
+      fetchUserMetrics()
     }
-  }, [user, loading])
+  }, [user, planType])
 
   const fetchLearningPath = async () => {
     try {
+      setLoading(true)
+      setError(null)
+      
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/learning/path', {
+      console.log('🔍 Fetching learning path with type:', planType)
+      console.log('🔑 Token available:', !!token)
+      
+      const url = `/api/learning/path${planType !== 'default' ? `?type=${planType}` : ''}`
+      console.log('📡 Fetching from URL:', url)
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Content-Type': 'application/json'
+        }
       })
+      
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response ok:', response.ok)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ HTTP Error:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
 
-      if (response.ok) {
-        const data = await response.json()
-        setCurrentPath(data.path)
-        setWeeklyModules(data.currentWeekModules || [])
-        setWeakAreas(data.weakAreas || [])
-        setPathExists(true)
-      } else if (response.status === 404) {
-        // No existe plan, mostrar opción de generar
-        setPathExists(false)
-        setWeakAreas([
-          { subject: 'Matemáticas', accuracy: 65, recommendedTime: 120, priority: 1, icon: '📐', color: '#FF6B6B' },
-          { subject: 'Lectura Crítica', accuracy: 78, recommendedTime: 90, priority: 2, icon: '📚', color: '#4ECDC4' },
-          { subject: 'Ciencias Naturales', accuracy: 82, recommendedTime: 60, priority: 3, icon: '🔬', color: '#45B7D1' },
-          { subject: 'Ciencias Sociales', accuracy: 88, recommendedTime: 45, priority: 4, icon: '🌍', color: '#96CEB4' },
-          { subject: 'Inglés', accuracy: 92, recommendedTime: 30, priority: 5, icon: '🇺🇸', color: '#FECA57' },
-        ])
+      const data = await response.json()
+      console.log('📦 Response data:', data)
+      
+      // Guardar info de debug
+      setDebugInfo({
+        planType,
+        responseStatus: response.status,
+        hasActivePath: !!data.activePath,
+        needsDiagnostic: data.needsDiagnostic,
+        message: data.message,
+        rawData: data
+      })
+      
+      if (data.success && data.activePath) {
+        setActivePath(data.activePath)
+        
+        // Encontrar la primera unidad no completada
+        if (data.activePath.units) {
+          const currentUnit = data.activePath.units.findIndex(
+            (unit: Unit) => unit.progress < 100
+          )
+          setSelectedUnit(currentUnit >= 0 ? currentUnit : 0)
+        }
+        console.log('✅ Plan cargado exitosamente')
+      } else if (data.needsDiagnostic) {
+        console.log('ℹ️ Necesita diagnóstico')
+        setError('Necesitas completar un diagnóstico primero')
+      } else {
+        console.log('⚠️ No se encontró plan activo')
+        setError('No se encontró plan de aprendizaje')
       }
     } catch (error) {
-      console.error('Error fetching learning path:', error)
-      setPathExists(false)
+      console.error('❌ Error fetching learning path:', error)
+      setError(error instanceof Error ? error.message : 'Error desconocido')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const generateLearningPath = async () => {
-    setIsGenerating(true)
+  const fetchUserMetrics = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/learning/generate-path', {
-        method: 'POST',
+      const response = await fetch('/api/learning/metrics', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          targetScore: 400, // Score objetivo por defecto
-          weeks: 12,
-          studyHoursPerWeek: 10,
-          focusAreas: weakAreas.filter(area => area.accuracy < 80).map(area => area.subject)
-        }),
+          'Content-Type': 'application/json'
+        }
       })
-
+      
       if (response.ok) {
         const data = await response.json()
-        setCurrentPath(data.path)
-        setWeeklyModules(data.currentWeekModules || [])
-        setPathExists(true)
-      } else {
-        console.error('Error generating path:', response.status)
+        setMetrics(data.metrics || data)
+        setStreak(data.currentStreak || data.metrics?.currentStreak || 0)
       }
     } catch (error) {
-      console.error('Error generating learning path:', error)
-    } finally {
-      setIsGenerating(false)
+      console.error('Error fetching metrics:', error)
     }
+  }
+
+  const startLesson = (unitId: string, lessonId: string) => {
+    router.push(`/learning-path/unit/${unitId}/lesson/${lessonId}`)
+  }
+
+  const getPlanTypeTitle = (type: string) => {
+    const titles = {
+      'quiz': '📝 Plan basado en Quiz Específico',
+      'subject': '📚 Plan por Materia (Matemáticas)', 
+      'comprehensive': '🎯 Plan Integral (Todas las Materias)',
+      'default': '🎓 Plan Personalizado'
+    }
+    return titles[type as keyof typeof titles] || titles.default
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-abyss text-neonSystem pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-neonSystem mx-auto mb-4"></div>
-          <p className="system-text">Cargando plan de estudio...</p>
+          <Brain className="h-16 w-16 text-purple-600 animate-pulse mx-auto mb-4" />
+          <p className="text-xl text-gray-700">Cargando tu plan personalizado...</p>
+          <p className="text-sm text-gray-500 mt-2">Tipo: {getPlanTypeTitle(planType)}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-xl p-12 text-center"
+          >
+            <AlertCircle className="h-24 w-24 text-red-500 mx-auto mb-6" />
+            <h1 className="text-3xl font-bold mb-4 text-red-600">
+              Error al cargar el plan
+            </h1>
+            <p className="text-lg text-gray-600 mb-6">{error}</p>
+            
+            {/* Debug info para desarrollo */}
+            {debugInfo && (
+              <div className="mt-8 p-4 bg-gray-100 rounded-lg text-left text-sm">
+                <h3 className="font-bold mb-2">Debug Info:</h3>
+                <pre className="whitespace-pre-wrap overflow-auto max-h-40">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <button
+                onClick={() => router.push('/practice')}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all mr-4"
+              >
+                Hacer Diagnóstico
+              </button>
+              
+              <button
+                onClick={() => router.push('/')}
+                className="bg-gray-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
+              >
+                Volver al Inicio
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!activePath) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-xl p-12 text-center"
+          >
+            <Brain className="h-24 w-24 text-purple-600 mx-auto mb-6" />
+            <h1 className="text-3xl font-bold mb-4">
+              ¡Crea tu Plan de Aprendizaje Personalizado!
+            </h1>
+            <p className="text-lg text-gray-600 mb-8">
+              Completa primero el diagnóstico ICFES para que podamos crear un plan
+              adaptado a tus necesidades específicas.
+            </p>
+            
+            {/* Opciones de tipo de plan */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">Tipos de Plan Disponibles:</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-semibold">📝 Por Quiz</h3>
+                  <p className="text-sm text-gray-600">Basado en tu último quiz específico</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-semibold">📚 Por Materia</h3>
+                  <p className="text-sm text-gray-600">Enfocado en una materia específica</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-semibold">🎯 Integral</h3>
+                  <p className="text-sm text-gray-600">Todas las materias ICFES</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Botones de acción */}
+            <div className="space-y-4">
+              <button
+                onClick={() => router.push('/learning-path/select-template')}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all mr-4"
+              >
+                ✨ Elegir Plan Personalizado
+              </button>
+              
+              <button
+                onClick={() => router.push('/practice')}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
+              >
+                📊 Hacer Diagnóstico Primero
+              </button>
+            </div>
+            
+            {/* Texto informativo */}
+            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                💡 <strong>Tip:</strong> Si ya completaste un quiz, puedes elegir directamente un plan personalizado. 
+                Si es tu primera vez, te recomendamos hacer el diagnóstico primero.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-abyss text-neonSystem pt-20">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="epic-title text-4xl mb-4 text-brightPurple">PLAN DE ESTUDIO IA</h1>
-          <p className="system-text text-lg text-neonSystem/80 max-w-2xl mx-auto">
-            Ruta personalizada generada por inteligencia artificial basada en tus estadísticas y objetivos
-          </p>
-        </div>
-
-        {!pathExists ? (
-          /* Generador de Plan Inicial */
-          <div className="max-w-4xl mx-auto">
-            {/* Análisis de Debilidades */}
-            <div className="epic-card p-8 mb-8">
-              <h2 className="epic-title text-2xl mb-6 text-levelUp">🔍 ANÁLISIS DE TUS ESTADÍSTICAS</h2>
-              <p className="system-text text-neonSystem/80 mb-6">
-                Basado en tu historial de respuestas, hemos identificado las siguientes áreas de oportunidad:
+    <div className="min-h-screen bg-gray-50">
+      {/* Header con métricas principales */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{activePath.name}</h1>
+              <p className="text-purple-100 mt-1">{activePath.description}</p>
+              <p className="text-sm text-purple-200 mt-1">
+                {getPlanTypeTitle(planType)}
               </p>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              {/* Racha diaria */}
+              <DailyStreak streak={streak} />
               
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {weakAreas.map((area, index) => (
-                  <div key={area.subject} className="epic-card p-4 border border-neonSystem/30">
-                    <div className="flex items-center mb-3">
-                      <span className="text-2xl mr-3">{area.icon}</span>
-                      <div>
-                        <h3 className="system-text font-bold text-neonSystem">{area.subject}</h3>
-                        <p className="text-xs text-neonSystem/60">Prioridad #{area.priority}</p>
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs text-neonSystem/60 mb-1">
-                        <span>Precisión actual</span>
-                        <span>{area.accuracy}%</span>
-                      </div>
-                      <div className="w-full bg-dungeon rounded-full h-2">
-                        <div 
-                          className="h-2 rounded-full"
-                          style={{ 
-                            width: `${area.accuracy}%`,
-                            backgroundColor: area.color,
-                            boxShadow: `0 0 8px ${area.color}40`
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-neonSystem/70">
-                      ⏱️ {area.recommendedTime} min/semana recomendados
-                    </p>
-                  </div>
-                ))}
-              </div>
-
+              {/* Progreso general */}
               <div className="text-center">
-                <button
-                  onClick={generateLearningPath}
-                  disabled={isGenerating}
-                  className="btn-primary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider"
-                >
-                  {isGenerating ? (
-                    <span className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                      GENERANDO PLAN IA...
-                    </span>
-                  ) : (
-                    '🤖 GENERAR PLAN PERSONALIZADO'
-                  )}
-                </button>
-                <p className="text-xs text-neonSystem/60 mt-3">
-                  La IA analizará tus estadísticas y creará un plan de 12 semanas
-                </p>
+                <div className="text-3xl font-bold">{activePath.progress}%</div>
+                <div className="text-sm text-purple-100">Completado</div>
+              </div>
+              
+              {/* XP Total */}
+              <div className="text-center">
+                <div className="text-3xl font-bold flex items-center">
+                  <Zap className="h-6 w-6 mr-1" />
+                  {user?.experience_points || 0}
+                </div>
+                <div className="text-sm text-purple-100">XP Total</div>
               </div>
             </div>
           </div>
-        ) : (
-          /* Plan de Estudio Activo */
-          <div className="max-w-6xl mx-auto">
-            {/* Información del Plan */}
-            <div className="epic-card p-6 mb-8 border border-brightPurple/50">
-              <div className="grid md:grid-cols-4 gap-6 text-center">
-                <div>
-                  <h3 className="epic-title text-xl text-brightPurple mb-2">{currentPath?.name}</h3>
-                  <p className="text-xs text-neonSystem/60">Plan Activo</p>
-                </div>
-                <div>
-                  <h3 className="epic-title text-xl text-levelUp mb-2">Semana {currentPath?.currentWeek}/{currentPath?.totalWeeks}</h3>
-                  <p className="text-xs text-neonSystem/60">Progreso Temporal</p>
-                </div>
-                <div>
-                  <h3 className="epic-title text-xl text-neonCyan mb-2">{currentPath?.completionPercentage}%</h3>
-                  <p className="text-xs text-neonSystem/60">Completado</p>
-                </div>
-                <div>
-                  <h3 className="epic-title text-xl text-neonSystem mb-2">{currentPath?.targetScore}</h3>
-                  <p className="text-xs text-neonSystem/60">Meta ICFES</p>
-                </div>
-              </div>
-            </div>
+        </div>
+      </div>
 
-            {/* Módulos de la Semana */}
-            <div className="mb-8">
-              <h2 className="epic-title text-2xl mb-6 text-levelUp">📅 PLAN SEMANAL</h2>
-              <div className="space-y-4">
-                {weeklyModules.map((module, index) => (
-                  <div key={module.id} className={`epic-card p-6 border-l-4 ${
-                    module.priority === 'HIGH' ? 'border-l-red-500' :
-                    module.priority === 'MEDIUM' ? 'border-l-yellow-500' : 'border-l-green-500'
-                  }`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <h3 className="epic-title text-lg text-neonSystem mr-3">{module.title}</h3>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            module.difficulty === 'HARD' ? 'bg-red-500/20 text-red-400' :
-                            module.difficulty === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {module.difficulty}
-                          </span>
-                          <span className="text-xs text-neonSystem/60 ml-2">{module.area}</span>
-                        </div>
-                        <p className="system-text text-neonSystem/80 mb-3">{module.description}</p>
-                        <p className="text-xs text-brightPurple mb-3">💡 IA Recomienda: {module.aiRecommendation}</p>
-                      </div>
-                      <div className="text-right ml-4">
-                        <p className="text-xs text-neonSystem/60">⏱️ {module.estimatedTime} min</p>
-                        <p className={`text-xs font-bold ${
-                          module.priority === 'HIGH' ? 'text-red-400' :
-                          module.priority === 'MEDIUM' ? 'text-yellow-400' : 'text-green-400'
-                        }`}>
-                          {module.priority} PRIORITY
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Temas */}
-                    <div className="mb-4">
-                      <p className="text-xs text-neonSystem/60 mb-2">📋 Temas:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {module.topics.map((topic, i) => (
-                          <span key={i} className="text-xs bg-dungeon px-2 py-1 rounded text-neonSystem/70">
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Recursos */}
-                    <div className="mb-4">
-                      <p className="text-xs text-neonSystem/60 mb-2">📚 Recursos de Estudio:</p>
-                      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-2">
-                        {module.resources.map((resource, i) => (
-                          <Link
-                            key={i}
-                            href={resource.url}
-                            className="text-xs bg-dungeon/50 hover:bg-dungeon border border-neonSystem/30 hover:border-neonSystem/60 px-3 py-2 rounded transition-all duration-300"
-                          >
-                            <div className="flex items-center">
-                              <span className="mr-2">
-                                {resource.type === 'video' ? '🎥' :
-                                 resource.type === 'practice' ? '🎯' :
-                                 resource.type === 'reading' ? '📖' : '📝'}
-                              </span>
-                              <div>
-                                <p className="text-neonSystem font-bold">{resource.title}</p>
-                                {resource.duration && (
-                                  <p className="text-neonSystem/60">{resource.duration} min</p>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Botón de Acción */}
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center space-x-4">
-                        {module.completed ? (
-                          <span className="text-green-400 font-bold">✅ Completado</span>
-                        ) : (
-                          <button className="btn-secondary px-4 py-2 text-sm">
-                            Comenzar Módulo
-                          </button>
-                        )}
-                      </div>
-                      <button className="text-xs text-neonSystem/60 hover:text-neonSystem">
-                        📊 Ver Progreso Detallado
-                      </button>
-                    </div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-12 gap-8">
+          {/* Sidebar con árbol de habilidades */}
+          <div className="col-span-3">
+            <SkillTree 
+              units={activePath.units}
+              currentUnit={selectedUnit}
+              onSelectUnit={setSelectedUnit}
+            />
+            
+            {/* Áreas objetivo */}
+            <div className="mt-6 bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-semibold text-lg mb-4 flex items-center">
+                <Target className="h-5 w-5 mr-2 text-purple-600" />
+                Áreas de Enfoque
+              </h3>
+              <div className="space-y-2">
+                {activePath.targetAreas?.map((area) => (
+                  <div
+                    key={area}
+                    className="px-3 py-2 bg-purple-50 rounded-lg text-sm font-medium text-purple-700"
+                  >
+                    {area}
                   </div>
-                ))}
+                )) || (
+                  <div className="text-sm text-gray-500">
+                    No hay áreas específicas definidas
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Acciones del Plan */}
-            <div className="flex justify-center space-x-4">
-              <button 
-                onClick={() => setPathExists(false)}
-                className="btn-secondary px-6 py-3"
+          {/* Contenido principal */}
+          <div className="col-span-6">
+            {/* Vista general del path */}
+            <PathOverview path={activePath} />
+            
+            {/* Unidad actual */}
+            {activePath.units && activePath.units[selectedUnit] && (
+              <motion.div
+                key={selectedUnit}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="mt-8"
               >
-                🔄 Regenerar Plan
-              </button>
-              <Link 
-                href="/practice"
-                className="btn-primary px-6 py-3"
-              >
-                📚 Ir a Entrenar
-              </Link>
+                <UnitProgress
+                  unit={activePath.units[selectedUnit]}
+                  onStartLesson={startLesson}
+                />
+              </motion.div>
+            )}
+            
+            {/* Recomendaciones de contenido */}
+            <div className="mt-8">
+              <ContentRecommendations
+                topic={activePath.units?.[selectedUnit]?.title || 'Matemáticas'}
+                weakAreas={activePath.targetAreas || []}
+              />
             </div>
           </div>
-        )}
+
+          {/* Panel derecho con métricas */}
+          <div className="col-span-3">
+            <MetricsDashboard
+              metrics={metrics}
+              weeklyGoal={activePath.weeklyGoal}
+            />
+            
+            {/* Siguiente objetivo */}
+            {activePath.units && activePath.units[selectedUnit] && (
+              <div className="mt-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
+                <h3 className="font-semibold text-lg mb-3">Próximo Objetivo</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <Award className="h-5 w-5 mr-2" />
+                    <span className="text-sm">
+                      Completa la Unidad {selectedUnit + 1} para desbloquear
+                    </span>
+                  </div>
+                  <div className="text-2xl font-bold">+{activePath.units[selectedUnit]?.xpReward} XP</div>
+                  <div className="w-full bg-white/20 rounded-full h-2">
+                    <div 
+                      className="bg-white rounded-full h-2 transition-all"
+                      style={{ width: `${activePath.units[selectedUnit]?.progress || 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Tips de estudio */}
+            <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+              <h3 className="font-semibold text-lg mb-3 text-yellow-800">
+                💡 Tip del Día
+              </h3>
+              <p className="text-sm text-yellow-700">
+                Estudia en bloques de 25 minutos con descansos de 5 minutos. 
+                La técnica Pomodoro mejora la retención y concentración.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

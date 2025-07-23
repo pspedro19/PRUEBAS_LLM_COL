@@ -247,10 +247,57 @@ export default function MathDungeonPage() {
       if (data.success) {
         setFeedback(data.data);
         setShowFeedback(true);
+        
+        // 🆕 NUEVA FUNCIONALIDAD: Mostrar notificación del plan generado
+        showPlanGenerationMessage();
       }
     } catch (error) {
       console.error('Error getting feedback:', error);
     }
+  };
+
+  // 🆕 NUEVA FUNCIÓN: Mostrar mensaje del plan generado
+  const showPlanGenerationMessage = () => {
+    const message = document.createElement('div');
+    message.innerHTML = `
+      <div style="
+        position: fixed; 
+        top: 20px; 
+        right: 20px; 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; 
+        padding: 16px 20px; 
+        border-radius: 12px; 
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        z-index: 1000;
+        font-family: 'Inter', sans-serif;
+        max-width: 300px;
+        animation: slideIn 0.5s ease-out;
+      ">
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 1.5em; margin-right: 8px;">🎓</span>
+          <strong>¡Plan de Aprendizaje Generado!</strong>
+        </div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.4;">
+          Basado en tus resultados, hemos creado un plan personalizado para mejorar en las áreas que necesitas.
+        </p>
+      </div>
+      <style>
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      </style>
+    `;
+    
+    document.body.appendChild(message);
+    
+    // Remover mensaje después de 5 segundos
+    setTimeout(() => {
+      if (message.parentNode) {
+        message.remove();
+      }
+    }, 5000);
   };
 
   const resetQuiz = () => {
@@ -503,27 +550,89 @@ export default function MathDungeonPage() {
                     </div>
                   )}
 
+                  {/* NUEVO: Plan de Aprendizaje Card */}
+                  <div className="bg-gradient-to-r from-purple-600/30 to-indigo-600/30 rounded-lg p-6 border border-purple-400/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">🎓</span>
+                        <div>
+                          <h3 className="text-xl font-semibold text-purple-200">¡Plan Personalizado Listo!</h3>
+                          <p className="text-sm text-purple-300">Basado en tus resultados del quiz</p>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-200">8 Unidades</div>
+                        <div className="text-xs text-purple-300">Adaptadas a ti</div>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm mb-4 text-purple-100">
+                      Hemos analizado tus respuestas y creado un plan de estudio personalizado. 
+                      El plan incluye 8 unidades enfocadas en mejorar las áreas donde más lo necesitas.
+                    </p>
+                    
+                    <Button 
+                      onClick={() => router.push('/learning-path')}
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-3 font-semibold text-lg"
+                    >
+                      🚀 Ver Mi Plan de Aprendizaje
+                    </Button>
+                  </div>
+
                   <div className="space-y-3">
+                    <Button 
+                      onClick={() => router.push('/learning-path')}
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-3 font-semibold"
+                    >
+                      🎓 Iniciar Plan de Estudio
+                    </Button>
+
                     <Button 
                       onClick={() => router.push('/dashboard')}
                       className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
                     >
-                      🏠 Ver Dashboard
+                      🏠 Ir al Dashboard
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => router.push('/')}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                    >
+                      🏡 Volver al Inicio
                     </Button>
                     
                     <Button 
                       onClick={() => router.push('/prueba/matematicas')}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3"
                     >
                       🗡️ Elegir Otro Calabozo
                     </Button>
-                    
-                    <Button 
-                      onClick={resetQuiz}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3"
-                    >
-                      🔄 Repetir Este Quiz
-                    </Button>
+
+                    {/* NUEVO: Opciones de Plan Personalizado */}
+                    <div className="mt-6 space-y-2">
+                      <h4 className="text-lg font-semibold text-white">📋 Opciones de Plan:</h4>
+                      
+                      <Button 
+                        onClick={() => router.push('/learning-path?type=quiz')}
+                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-2"
+                      >
+                        📝 Plan por Quiz Específico
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => router.push('/learning-path?type=subject')}
+                        className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white py-2"
+                      >
+                        📚 Plan por Materia (Matemáticas)
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => router.push('/learning-path?type=comprehensive')}
+                        className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white py-2"
+                      >
+                        🎯 Plan Integral (Todas las Materias)
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

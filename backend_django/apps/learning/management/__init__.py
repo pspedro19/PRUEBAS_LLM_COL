@@ -1,1 +1,1 @@
-# Management package for learning app 
+# Management commands for learning app 

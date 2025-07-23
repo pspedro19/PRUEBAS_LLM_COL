@@ -18,7 +18,11 @@ import json
 
 # Importar los modelos correctos que tienen datos
 from .models_nuevo import PreguntaICFES, OpcionRespuesta, AreaTematica, RespuestaUsuarioICFES
-from .models import UserICFESSession, ICFESExam
+from .models import UserICFESSession, ICFESExam, ICFESResult
+
+# NUEVO: Importar el motor de recomendaciones
+from apps.learning.recommendation_engine import LearningRecommendationEngine
+from apps.learning.models import UserPathEnrollment
 
 
 @api_view(['POST'])
@@ -255,6 +259,7 @@ def get_current_question(request, session_id):
 def submit_icfes_answer(request, session_id):
     """
     Enviar respuesta a una pregunta del quiz ICFES
+    ACTUALIZADO: Ahora genera automáticamente el plan de aprendizaje al completar
     """
     try:
         # Obtener datos del request
@@ -354,22 +359,37 @@ def submit_icfes_answer(request, session_id):
             session.status = 'COMPLETED'
             session.completed_at = timezone.now()
             print(f"🏆 Sesión completada!")
+            
+            # 🆕 NUEVA FUNCIONALIDAD: Generar plan de aprendizaje automáticamente
+            try:
+                learning_path_generated = _generate_learning_path_from_quiz(session, request.user)
+                print(f"📚 Plan de aprendizaje generado: {learning_path_generated}")
+            except Exception as e:
+                print(f"⚠️ Error generando plan de aprendizaje: {str(e)}")
+                # No fallar el quiz si hay error generando el plan
         
         session.save()
         print(f"📊 Progreso actualizado: {next_index}/{total_questions_in_session}")
         
+        response_data = {
+            'is_correct': is_correct,
+            'correct_answer': pregunta.respuesta_correcta,
+            'progress': {
+                'current': next_index,
+                'total': total_questions_in_session,
+                'percentage': (next_index / total_questions_in_session) * 100 if total_questions_in_session else 0
+            },
+            'session_complete': is_completed,
+        }
+        
+        # Si se completó la sesión, agregar información del plan generado
+        if is_completed:
+            response_data['learning_path_generated'] = True
+            response_data['redirect_to_learning_path'] = True
+        
         return Response({
             'success': True,
-            'data': {
-                'is_correct': is_correct,
-                'correct_answer': pregunta.respuesta_correcta,
-                'progress': {
-                    'current': next_index,
-                    'total': total_questions_in_session,
-                    'percentage': (next_index / total_questions_in_session) * 100 if total_questions_in_session else 0
-                },
-                'session_complete': is_completed,
-            }
+            'data': response_data
         })
         
     except Exception as e:
@@ -378,6 +398,195 @@ def submit_icfes_answer(request, session_id):
             'success': False,
             'message': f'Error interno: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _generate_learning_path_from_quiz(session, user):
+    """
+    Función interna para generar el plan de aprendizaje basado en los resultados del quiz
+    MEJORADA: Más robusta contra errores y mejor manejo de duplicados
+    """
+    try:
+        print(f"🧠 Iniciando generación de plan para usuario {user.username}")
+        
+        # 1. Verificar si el usuario ya tiene un plan activo
+        existing_enrollment = UserPathEnrollment.objects.filter(
+            user=user,
+            status='ACTIVE'
+        ).first()
+        
+        if existing_enrollment:
+            print(f"✅ Usuario ya tiene un plan activo: {existing_enrollment.learning_path.name}")
+            return True
+        
+        # 2. Calcular estadísticas del quiz
+        respuestas_usuario = RespuestaUsuarioICFES.objects.filter(
+            user=user,
+            session_id=str(session.uuid)
+        ).select_related('pregunta', 'pregunta__area_tematica')
+        
+        total_questions = respuestas_usuario.count()
+        if total_questions == 0:
+            print("⚠️ No se encontraron respuestas para esta sesión")
+            return False
+        
+        correct_answers = respuestas_usuario.filter(es_correcta=True).count()
+        accuracy = (correct_answers / total_questions) * 100
+        
+        print(f"📊 Estadísticas: {correct_answers}/{total_questions} ({accuracy:.1f}%)")
+        
+        # 3. Crear o actualizar ICFESResult
+        try:
+            result, created = ICFESResult.objects.get_or_create(
+                user=user,
+                session=session,
+                defaults={
+                    'icfes_exam': session.icfes_exam,
+                    'total_questions': total_questions,
+                    'correct_answers': correct_answers,
+                    'incorrect_answers': total_questions - correct_answers,
+                    'total_time_seconds': 60 * total_questions,  # Estimado
+                    'mathematics_score': min(int(accuracy), 100),  # Por ahora solo matemáticas
+                    'global_score': min(int(accuracy * 5), 500),  # Escala a 500
+                }
+            )
+            
+            if not created:
+                # Actualizar resultado existente
+                result.total_questions = total_questions
+                result.correct_answers = correct_answers
+                result.incorrect_answers = total_questions - correct_answers
+                result.mathematics_score = min(int(accuracy), 100)
+                result.global_score = min(int(accuracy * 5), 500)
+                result.save()
+            
+            print(f"✅ ICFESResult {'creado' if created else 'actualizado'}: {result.mathematics_score}/100")
+            
+        except Exception as e:
+            print(f"❌ Error creando ICFESResult: {str(e)}")
+            return False
+        
+        # 4. Analizar áreas débiles
+        try:
+            respuestas_incorrectas = respuestas_usuario.filter(es_correcta=False)
+            weak_areas = []
+            
+            for respuesta in respuestas_incorrectas:
+                if respuesta.pregunta.area_tematica:
+                    area_name = respuesta.pregunta.area_tematica.nombre
+                    if area_name not in weak_areas:
+                        weak_areas.append(area_name)
+            
+            # Mapear áreas ICFES a áreas estándar
+            area_mapping = {
+                'Aritmética y Operaciones Básicas': 'Álgebra Básica',
+                'Álgebra y Funciones': 'Funciones y Álgebra',
+                'Geometría y Trigonometría': 'Geometría',
+                'Estadística y Probabilidad': 'Estadística',
+                'Problemas Aplicados y Análisis': 'Problemas Aplicados'
+            }
+            
+            mapped_weak_areas = []
+            for area in weak_areas:
+                mapped_area = area_mapping.get(area, area)
+                if mapped_area not in mapped_weak_areas:
+                    mapped_weak_areas.append(mapped_area)
+            
+            print(f"🎯 Áreas débiles identificadas: {mapped_weak_areas}")
+            
+        except Exception as e:
+            print(f"⚠️ Error analizando áreas débiles: {str(e)}")
+            mapped_weak_areas = ['Álgebra Básica']  # Fallback
+        
+        # 5. Generar plan usando el motor de recomendaciones
+        try:
+            from apps.learning.recommendation_engine import LearningRecommendationEngine
+            engine = LearningRecommendationEngine()
+            
+            # Análisis básico para el motor
+            analysis = {
+                'global_score': result.mathematics_score,
+                'selected_template': engine._select_template_by_score(result.mathematics_score),
+                'critical_areas': mapped_weak_areas,
+                'weak_areas': mapped_weak_areas,
+                'area_analysis': {
+                    'mathematics': {
+                        'score': result.mathematics_score,
+                        'weak_topics': [{'topic': area, 'score': 50} for area in mapped_weak_areas]
+                    }
+                },
+                'recommendations': []
+            }
+            
+            # Generar plan personalizado
+            learning_path = engine.generate_personalized_path(user, analysis)
+            
+            print(f"🎓 Plan generado exitosamente: {learning_path.name}")
+            print(f"📚 Unidades creadas: {learning_path.units.count()}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error generando plan con motor de recomendaciones: {str(e)}")
+            print("🔄 Intentando crear plan básico de fallback...")
+            
+            # Fallback: crear plan básico sin el motor
+            try:
+                return _create_basic_fallback_plan(user, result.mathematics_score, mapped_weak_areas)
+            except Exception as fallback_error:
+                print(f"❌ Error en plan de fallback: {str(fallback_error)}")
+                return False
+        
+    except Exception as e:
+        print(f"❌ Error general en _generate_learning_path_from_quiz: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return False
+
+
+def _create_basic_fallback_plan(user, score, weak_areas):
+    """
+    Crear un plan básico de fallback si falla el motor de recomendaciones
+    """
+    try:
+        from apps.learning.models import LearningPath, UserPathEnrollment
+        
+        # Determinar nivel basado en score
+        if score <= 45:
+            plan_name = f"Plan Básico de Matemáticas - {user.username}"
+            description = "Plan básico para fortalecer fundamentos matemáticos"
+        elif score <= 70:
+            plan_name = f"Plan Intermedio de Matemáticas - {user.username}"
+            description = "Plan intermedio para mejorar habilidades matemáticas"
+        else:
+            plan_name = f"Plan Avanzado de Matemáticas - {user.username}"
+            description = "Plan avanzado para dominar matemáticas"
+        
+        # Crear learning path básico
+        learning_path = LearningPath.objects.create(
+            name=plan_name,
+            description=description,
+            path_type='PERSONALIZED',
+            difficulty_level='BASICO' if score <= 45 else 'MEDIO' if score <= 70 else 'AVANZADO',
+            estimated_duration_hours=40 if score <= 45 else 35 if score <= 70 else 30,
+            recommended_weekly_hours=6 if score <= 45 else 5 if score <= 70 else 4,
+            target_icfes_areas=weak_areas,
+            created_by=user
+        )
+        
+        # Crear inscripción
+        UserPathEnrollment.objects.create(
+            user=user,
+            learning_path=learning_path,
+            status='ACTIVE',
+            daily_goal_minutes=60
+        )
+        
+        print(f"✅ Plan básico de fallback creado: {plan_name}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en plan de fallback: {str(e)}")
+        return False
 
 
 @api_view(['GET'])
