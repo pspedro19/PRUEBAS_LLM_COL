@@ -13,8 +13,8 @@ interface SkillTreeProps {
 export function SkillTree({ units, currentUnit, onSelectUnit }: SkillTreeProps) {
   const getUnitStatus = (unit: Unit, index: number) => {
     if (unit.locked) return 'locked'
-    if (unit.progress === 100) return 'completed'
-    if (unit.progress > 0) return 'in-progress'
+    if ((unit.progress || 0) === 100) return 'completed'
+    if ((unit.progress || 0) > 0) return 'in-progress'
     if (index === currentUnit) return 'current'
     return 'available'
   }
@@ -33,15 +33,19 @@ export function SkillTree({ units, currentUnit, onSelectUnit }: SkillTreeProps) 
     }
   }
 
-  const getUnitColor = (type: Unit['type']) => {
-    const colors: Record<Unit['type'], string> = {
+  const getUnitColor = (type?: Unit['type'] | Unit['unit_type']) => {
+    const colors: Record<string, string> = {
       foundation: 'from-blue-400 to-blue-600',
       core: 'from-purple-400 to-purple-600',
       practice: 'from-green-400 to-green-600',
       advanced: 'from-orange-400 to-orange-600',
-      assessment: 'from-red-400 to-red-600'
+      assessment: 'from-red-400 to-red-600',
+      'FOUNDATION': 'from-blue-400 to-blue-600',
+      'CORE': 'from-purple-400 to-purple-600',
+      'PRACTICE': 'from-green-400 to-green-600',
+      'ASSESSMENT': 'from-red-400 to-red-600'
     }
-    return colors[type] || 'from-gray-400 to-gray-600'
+    return type ? (colors[type] || 'from-gray-400 to-gray-600') : 'from-gray-400 to-gray-600'
   }
 
   return (
@@ -71,8 +75,8 @@ export function SkillTree({ units, currentUnit, onSelectUnit }: SkillTreeProps) 
               >
                 {/* Barra de progreso de fondo */}
                 <div 
-                  className={`absolute inset-0 bg-gradient-to-r ${getUnitColor(unit.type)} opacity-10`}
-                  style={{ width: `${unit.progress}%` }}
+                  className={`absolute inset-0 bg-gradient-to-r ${getUnitColor(unit.type || unit.unit_type)} opacity-10`}
+                  style={{ width: `${unit.progress || 0}%` }}
                 />
                 
                 <div className="relative flex items-center justify-between">
@@ -80,7 +84,7 @@ export function SkillTree({ units, currentUnit, onSelectUnit }: SkillTreeProps) 
                     {getUnitIcon(status)}
                     <div>
                       <div className="font-semibold text-sm text-gray-800">
-                        Unidad {unit.position}
+                        Unidad {unit.position || unit.order || (index + 1)}
                       </div>
                       <div className="text-xs text-gray-600 mt-0.5">
                         {unit.title}
@@ -89,15 +93,15 @@ export function SkillTree({ units, currentUnit, onSelectUnit }: SkillTreeProps) 
                   </div>
                   
                   <div className="text-right">
-                    {unit.progress > 0 && (
+                    {(unit.progress || 0) > 0 && (
                       <div className="text-sm font-medium text-gray-700">
-                        {unit.progress}%
+                        {unit.progress || 0}%
                       </div>
                     )}
-                    {unit.xpReward && status !== 'completed' && (
+                    {(unit.xpReward || unit.xp_reward) && status !== 'completed' && (
                       <div className="text-xs text-purple-600 flex items-center">
                         <Star className="h-3 w-3 mr-1" />
-                        {unit.xpReward} XP
+                        {unit.xpReward || unit.xp_reward || 100} XP
                       </div>
                     )}
                   </div>

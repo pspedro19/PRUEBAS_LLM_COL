@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward to Django backend - Use internal Docker networking
-    const backendUrl = 'http://backend:8000';
+    // ✅ FIXED: Usar el nombre correcto del contenedor
+    const backendUrl = 'http://mathquest-backend:8000';
     const response = await fetch(`${backendUrl}/api/auth/complete-assessment/`, {
       method: 'POST',
       headers: {

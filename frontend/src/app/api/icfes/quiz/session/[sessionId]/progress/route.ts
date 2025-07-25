@@ -5,33 +5,26 @@ export async function GET(
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const { sessionId } = params;
+    const token = request.headers.get('authorization')
+    const { sessionId } = params
 
-    if (!authHeader) {
-      return NextResponse.json(
-        { success: false, message: 'No authorization header' },
-        { status: 401 }
-      );
-    }
-
-    // Forward to backend - Use internal Docker networking
-    const backendUrl = 'http://backend:8000';
-    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/progress`, {
+    const backendUrl = 'http://mathquest-backend:8000';
+    // ✅ FIXED: Agregar trailing slash
+    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/progress/`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeader,
+        'Authorization': token || '',
       },
-    });
+    })
 
-    const data = await response.json();
-    
-    return NextResponse.json(data, { status: response.status });
+    const data = await response.json()
+
+    return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    console.error('Error in progress route:', error);
+    console.error('Error in quiz progress proxy:', error)
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { error: 'Error interno del servidor' },
       { status: 500 }
-    );
+    )
   }
 } 

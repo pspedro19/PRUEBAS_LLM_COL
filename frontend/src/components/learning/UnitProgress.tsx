@@ -10,15 +10,19 @@ interface UnitProgressProps {
 }
 
 export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
-  const getTypeColor = (type: Unit['type']) => {
+  const getTypeColor = (type?: Unit['type'] | Unit['unit_type']) => {
     const colors = {
       foundation: 'bg-blue-500',
       core: 'bg-purple-500',
       practice: 'bg-green-500',
       advanced: 'bg-orange-500',
-      assessment: 'bg-red-500'
+      assessment: 'bg-red-500',
+      'FOUNDATION': 'bg-blue-500',
+      'CORE': 'bg-purple-500',
+      'PRACTICE': 'bg-green-500',
+      'ASSESSMENT': 'bg-red-500'
     }
-    return colors[type] || 'bg-gray-500'
+    return type ? (colors[type] || 'bg-gray-500') : 'bg-gray-500'
   }
 
   const getLessonIcon = (lesson: any) => {
@@ -38,9 +42,9 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-3 h-3 rounded-full ${getTypeColor(unit.type)}`} />
+              <div className={`w-3 h-3 rounded-full ${getTypeColor(unit.type || unit.unit_type)}`} />
               <span className="text-sm font-medium text-gray-600">
-                Unidad {unit.position}
+                Unidad {unit.position || unit.order || 1}
               </span>
             </div>
             <h3 className="text-2xl font-bold text-gray-800">{unit.title}</h3>
@@ -50,7 +54,7 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
           </div>
           
           <div className="text-right">
-            <div className="text-3xl font-bold text-purple-600">{unit.progress}%</div>
+            <div className="text-3xl font-bold text-purple-600">{unit.progress || 0}%</div>
             <p className="text-sm text-gray-600">Completado</p>
           </div>
         </div>
@@ -59,7 +63,7 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
         <div className="mt-4 w-full bg-gray-200 rounded-full h-3">
           <motion.div 
             initial={{ width: 0 }}
-            animate={{ width: `${unit.progress}%` }}
+            animate={{ width: `${unit.progress || 0}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
             className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full"
           />
@@ -69,11 +73,11 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
         <div className="flex items-center gap-6 mt-4 text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            <span>{unit.estimatedDuration} min</span>
+            <span>{unit.estimatedDuration || unit.estimated_duration_minutes || 25} min</span>
           </div>
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4" />
-            <span>{unit.xpReward} XP</span>
+            <span>{unit.xpReward || unit.xp_reward || 100} XP</span>
           </div>
           <div className="flex items-center gap-2">
             <Book className="h-4 w-4" />
@@ -94,7 +98,7 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
               transition={{ delay: index * 0.1 }}
             >
               <button
-                onClick={() => !unit.locked && !lesson.completed && onStartLesson(unit.id, lesson.id)}
+                onClick={() => !unit.locked && !lesson.completed && onStartLesson(String(unit.id), String(lesson.id))}
                 disabled={unit.locked || lesson.completed}
                 className={`
                   w-full text-left p-4 rounded-lg border transition-all
@@ -109,7 +113,7 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
                     <div>
                       <h5 className="font-medium text-gray-800">{lesson.title}</h5>
                       <div className="flex items-center gap-4 mt-1 text-xs text-gray-600">
-                        <span>{lesson.duration} min</span>
+                        <span>{lesson.duration || lesson.duration_minutes || 25} min</span>
                         <span>•</span>
                         <span>{lesson.type}</span>
                         {lesson.score !== undefined && (
@@ -128,10 +132,10 @@ export function UnitProgress({ unit, onStartLesson }: UnitProgressProps) {
                     {!lesson.completed && !unit.locked && (
                       <div className="text-sm">
                         <div className="text-purple-600 font-medium">
-                          +{lesson.xpReward} XP
+                          +{lesson.xpReward || 50} XP
                         </div>
                         <div className="text-xs text-gray-500">
-                          Mín. {lesson.passingScore}%
+                          Mín. {lesson.passingScore || 70}%
                         </div>
                       </div>
                     )}

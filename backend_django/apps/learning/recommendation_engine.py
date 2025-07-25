@@ -342,34 +342,170 @@ class LearningRecommendationEngine:
             raise e
     
     def _create_units_from_template(self, learning_path: LearningPath, template: Dict, analysis: Dict):
-        """Crear unidades basadas en template YAML"""
+        """Crear unidades basadas en template YAML - MEJORADO CON PERSONALIZACIÓN COMPLETA"""
         units_config = template.get('units', [])
+        template_metadata = template.get('metadata', {})
+        template_criteria_raw = template.get('criteria', {})
+        
+        # ✅ ARREGLAR: Manejar criteria como lista o diccionario
+        template_criteria = {}
+        if isinstance(template_criteria_raw, list):
+            # Si criteria es una lista, convertir a diccionario
+            for item in template_criteria_raw:
+                if isinstance(item, dict):
+                    template_criteria.update(item)
+        elif isinstance(template_criteria_raw, dict):
+            template_criteria = template_criteria_raw
         
         for unit_config in units_config:
-            # Crear unidad
+            # ✅ MAPEO COMPLETO DE CAMPOS YAML → BD
             unit = LearningPathUnit.objects.create(
                 learning_path=learning_path,
+                
+                # Campos básicos (ya funcionaban)
                 title=unit_config['title'],
                 description=unit_config['description'],
                 order=unit_config['id'],
-                unit_type='CORE',  # Usar tipo válido del modelo
                 estimated_duration_minutes=unit_config.get('estimated_duration', 240),
-                xp_reward=unit_config.get('xp_reward', 100)
+                xp_reward=unit_config.get('xp_reward', 100),
+                
+                # ✅ NUEVOS CAMPOS PERSONALIZADOS
+                icon_emoji=unit_config.get('icon', template_metadata.get('icon', '📖')),
+                unit_type=unit_config.get('unit_type', 'CORE'),
+                difficulty_modifier=unit_config.get('difficulty_modifier', self._get_difficulty_modifier(template_metadata.get('difficulty', 'MEDIO'))),
+                
+                # ✅ METADATOS ENRIQUECIDOS
+                metadata={
+                    'template_name': learning_path.name.split(' - ')[0],  # Nombre del template
+                    'focus_topics': unit_config.get('topics', []),
+                    'learning_style': template_criteria.get('learning_style', 'balanced'),
+                    'practice_intensity': template_criteria.get('practice_intensity', 'medium'),
+                    'color_theme': template_metadata.get('color_theme', '#3B82F6'),
+                    'difficulty_level': template_metadata.get('difficulty', 'MEDIO'),
+                    'target_score_range': template_metadata.get('target_score_range', [0, 100]),
+                    'estimated_duration_original': unit_config.get('estimated_duration', 240),
+                    'weak_areas_focus': analysis.get('weak_areas', [])
+                },
+                
+                # ✅ CONFIGURACIÓN ADAPTATIVA
+                learning_objectives=unit_config.get('topics', []),
+                unlock_criteria=self._generate_unlock_criteria(unit_config, template_metadata)
             )
             
-            # Crear lecciones si están definidas
+            # ✅ CREAR LECCIONES ADAPTATIVAS
             lessons_config = unit_config.get('lessons', [])
-            for idx, lesson_config in enumerate(lessons_config):
-                LearningPathLesson.objects.create(
-                    path_unit=unit,  # Campo correcto es path_unit, no unit
-                    title=lesson_config['title'],
-                    lesson_type=self._map_lesson_type(lesson_config.get('type', 'CONCEPT')),
-                    order=idx + 1
-                )
+            if lessons_config:
+                self._create_lessons_from_yaml(unit, lessons_config, template_metadata, analysis)
+            else:
+                self._create_adaptive_lessons(unit, unit_config.get('topics', []), template_metadata, analysis)
+                
+    def _get_difficulty_modifier(self, difficulty_level: str) -> float:
+        """Obtener modificador de dificultad basado en el nivel del template"""
+        modifiers = {
+            'BASICO': 0.8,      # 20% más fácil
+            'BASIC': 0.8,
+            'MEDIO': 1.0,       # Dificultad estándar
+            'INTERMEDIATE': 1.0,
+            'AVANZADO': 1.3,    # 30% más difícil
+            'ADVANCED': 1.3,
+            'EXPERT': 1.5       # 50% más difícil
+        }
+        return modifiers.get(difficulty_level.upper(), 1.0)
+    
+    def _generate_unlock_criteria(self, unit_config: Dict, template_metadata: Dict) -> Dict:
+        """Generar criterios de desbloqueo basados en template y configuración"""
+        base_criteria = {
+            'previous_unit_completion': True,
+            'min_score_percentage': 70,
+            'hearts_required': 1
+        }
+        
+        # Ajustar según dificultad
+        difficulty = template_metadata.get('difficulty', 'MEDIO')
+        if difficulty == 'BASICO':
+            base_criteria['min_score_percentage'] = 60  # Más permisivo
+        elif difficulty == 'AVANZADO':
+            base_criteria['min_score_percentage'] = 80  # Más estricto
+            base_criteria['hearts_required'] = 2
             
-            # Si no hay lecciones definidas, crear lecciones básicas
-            if not lessons_config:
-                self._create_default_lessons(unit, unit_config.get('topics', []))
+        return base_criteria
+    
+    def _create_lessons_from_yaml(self, unit: LearningPathUnit, lessons_config: List[Dict], template_metadata: Dict, analysis: Dict):
+        """Crear lecciones desde configuración YAML con personalización"""
+        for idx, lesson_config in enumerate(lessons_config):
+            lesson_type = self._map_lesson_type(lesson_config.get('type', 'CONCEPT'))
+            
+            # ✅ PERSONALIZACIÓN POR TEMPLATE
+            duration = lesson_config.get('duration', 25)
+            if template_metadata.get('difficulty') == 'BASICO':
+                duration = int(duration * 1.2)  # 20% más tiempo para básico
+            elif template_metadata.get('difficulty') == 'AVANZADO':
+                duration = int(duration * 0.8)  # 20% menos tiempo para avanzado
+            
+            LearningPathLesson.objects.create(
+                path_unit=unit,
+                title=lesson_config['title'],
+                lesson_type=lesson_type,
+                order=idx + 1,
+                metadata={
+                    'original_duration': lesson_config.get('duration', 25),
+                    'adjusted_duration': duration,
+                    'content_url': lesson_config.get('content_url', ''),
+                    'questions_count': lesson_config.get('questions_count', 10),
+                    'difficulty_level': template_metadata.get('difficulty', 'MEDIO'),
+                    'focus_areas': analysis.get('weak_areas', [])
+                }
+            )
+    
+    def _create_adaptive_lessons(self, unit: LearningPathUnit, topics: List[str], template_metadata: Dict, analysis: Dict):
+        """Crear lecciones adaptativas basadas en el análisis del usuario y template"""
+        difficulty = template_metadata.get('difficulty', 'MEDIO')
+        weak_areas = analysis.get('weak_areas', [])
+        
+        # ✅ TIPOS DE LECCIÓN SEGÚN TEMPLATE
+        if difficulty == 'BASICO':
+            lesson_pattern = ['CONCEPT', 'PRACTICE', 'PRACTICE', 'QUIZ']  # Más práctica
+        elif difficulty == 'AVANZADO':
+            lesson_pattern = ['CONCEPT', 'CHALLENGE', 'QUIZ', 'STORY']   # Más desafío
+        else:
+            lesson_pattern = ['CONCEPT', 'PRACTICE', 'QUIZ', 'CHALLENGE'] # Balanceado
+        
+        for idx, topic in enumerate(topics[:4]):  # Máximo 4 lecciones por unidad
+            lesson_type = lesson_pattern[idx % len(lesson_pattern)]
+            
+            # ✅ AJUSTAR DURACIÓN POR DIFICULTAD
+            base_duration = 25
+            if difficulty == 'BASICO':
+                duration = int(base_duration * 1.3)  # Más tiempo
+            elif difficulty == 'AVANZADO':
+                duration = int(base_duration * 0.7)  # Menos tiempo
+            else:
+                duration = base_duration
+            
+            # ✅ ENFOQUE ESPECIAL EN ÁREAS DÉBILES
+            is_weak_area = any(weak_area.lower() in topic.lower() for weak_area in weak_areas)
+            if is_weak_area and lesson_type == 'PRACTICE':
+                lesson_type = 'PRACTICE'  # Doble práctica para áreas débiles
+                duration = int(duration * 1.2)
+            
+            LearningPathLesson.objects.create(
+                path_unit=unit,
+                title=f"Lección {idx + 1}: {topic}",
+                lesson_type=lesson_type,
+                order=idx + 1,
+                metadata={
+                    'topic': topic,
+                    'duration_minutes': duration,
+                    'difficulty_level': difficulty,
+                    'is_weak_area_focus': is_weak_area,
+                    'template_origin': template_metadata.get('name', 'Unknown'),
+                    'adaptive_adjustments': {
+                        'duration_multiplier': duration / base_duration,
+                        'extra_practice': is_weak_area,
+                        'difficulty_modifier': unit.difficulty_modifier
+                    }
+                }
+            )
     
     def _map_lesson_type(self, yaml_type: str) -> str:
         """Mapear tipos de lección de YAML a tipos válidos del modelo"""
@@ -429,4 +565,80 @@ class LearningRecommendationEngine:
                     'target_score_range': template_data['metadata']['target_score_range']
                 })
         
-        return templates 
+        return templates
+    
+    def get_personalization_config(self, template_name: str, analysis: Dict = None) -> Dict:
+        """
+        Obtener configuración completa de personalización para un template
+        NUEVA FUNCIÓN: Para uso del frontend
+        """
+        template = self.get_template_by_name(template_name)
+        if not template:
+            return {}
+            
+        metadata = template.get('metadata', {})
+        criteria = template.get('criteria', {})
+        ui_config = self.get_ui_configuration(template_name)
+        
+        # Configuración visual personalizada
+        personalization = {
+            'visual': {
+                'primary_color': metadata.get('color_theme', '#3B82F6'),
+                'icon': metadata.get('icon', '📖'),
+                'difficulty_label': metadata.get('difficulty', 'MEDIO'),
+                'background_gradient': ui_config.get('background', 'gradient-to-br from-blue-500 to-purple-600'),
+                'button_style': ui_config.get('button_style', 'bg-blue-600 hover:bg-blue-700'),
+                'progress_color': ui_config.get('progress_color', 'bg-blue-400')
+            },
+            'learning': {
+                'style': criteria.get('learning_style', 'balanced'),
+                'intensity': criteria.get('practice_intensity', 'medium'),
+                'focus_areas': criteria.get('focus_topics', []),
+                'estimated_hours': metadata.get('estimated_hours', 40),
+                'weekly_hours': metadata.get('weekly_hours', 5)
+            },
+            'difficulty': {
+                'level': metadata.get('difficulty', 'MEDIO'),
+                'modifier': self._get_difficulty_modifier(metadata.get('difficulty', 'MEDIO')),
+                'target_score_range': metadata.get('target_score_range', [0, 100])
+            },
+            'adaptive': {
+                'weak_areas': analysis.get('weak_areas', []) if analysis else [],
+                'user_score': analysis.get('global_score', 0) if analysis else 0,
+                'personalized_message': self._generate_personalized_message(template_name, analysis)
+            }
+        }
+        
+        return personalization
+    
+    def _generate_personalized_message(self, template_name: str, analysis: Dict = None) -> str:
+        """Generar mensaje personalizado basado en template y análisis"""
+        if not analysis:
+            # Mensajes por defecto sin análisis
+            messages = {
+                'basic_mathematics_path': "Construyamos juntos bases sólidas en matemáticas",
+                'intermediate_mathematics_path': "Perfeccionemos tus habilidades matemáticas existentes", 
+                'advanced_mathematics_path': "Llevemos tu dominio matemático al siguiente nivel"
+            }
+            return messages.get(template_name, "Comencemos tu viaje de aprendizaje personalizado")
+        
+        # Mensajes personalizados con análisis
+        score = analysis.get('global_score', 0)
+        weak_areas = analysis.get('weak_areas', [])
+        
+        if template_name == 'basic_mathematics_path':
+            if weak_areas:
+                return f"Fortaleceremos especialmente {', '.join(weak_areas[:2])} paso a paso"
+            return f"Con tu puntaje de {score}, construiremos fundamentos sólidos desde cero"
+            
+        elif template_name == 'intermediate_mathematics_path':
+            if weak_areas:
+                return f"Mejoraremos {', '.join(weak_areas[:2])} mientras consolidamos tus fortalezas"
+            return f"Con tu puntaje de {score}, perfeccionaremos técnicas intermedias"
+            
+        elif template_name == 'advanced_mathematics_path':
+            if weak_areas:
+                return f"Dominaremos {', '.join(weak_areas[:2])} con estrategias avanzadas"
+            return f"¡Excelente puntaje de {score}! Alcancemos la maestría matemática"
+            
+        return "Plan personalizado basado en tu perfil único" 

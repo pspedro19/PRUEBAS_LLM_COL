@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
 
 interface ICFESArea {
   id: string
@@ -16,21 +17,106 @@ interface ICFESArea {
   difficulty: 'Básico' | 'Intermedio' | 'Avanzado'
 }
 
-export default function PracticePage() {
-  const [selectedArea, setSelectedArea] = useState<string | null>(null)
+interface GeneralStats {
+  overall_progress: number
+  total_questions_answered: number
+  overall_accuracy: number
+  current_streak: number
+}
 
-  const icfesAreas: ICFESArea[] = [
+export default function PracticePage() {
+  const { user, loading } = useAuth()
+  const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const [icfesAreas, setIcfesAreas] = useState<ICFESArea[]>([])
+  const [generalStats, setGeneralStats] = useState<GeneralStats | null>(null)
+  const [dataLoading, setDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Cargar estadísticas cuando el usuario esté disponible
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        loadUserAreasStats()
+      } else {
+        // Usuario no logueado: mostrar áreas con todo en 0
+        setIcfesAreas(getDefaultAreas())
+        setGeneralStats({
+          overall_progress: 0,
+          total_questions_answered: 0,
+          overall_accuracy: 0,
+          current_streak: 0
+        })
+        setDataLoading(false)
+      }
+    }
+  }, [user, loading])
+
+  const loadUserAreasStats = async () => {
+    setDataLoading(true)
+    setError(null)
+    
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        throw new Error('No token available')
+      }
+
+      console.log('🔄 Cargando estadísticas de áreas ICFES...')
+      
+      const response = await fetch('/api/icfes/areas-stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      console.log('📊 Areas stats response:', data)
+
+      if (data.success) {
+        setIcfesAreas(data.data.areas)
+        setGeneralStats(data.data.general_stats)
+        console.log('✅ Estadísticas cargadas exitosamente')
+      } else {
+        console.error('❌ Error en respuesta:', data.message)
+        // Fallback a datos en 0 si hay error
+        setIcfesAreas(getDefaultAreas())
+        setGeneralStats({
+          overall_progress: 0,
+          total_questions_answered: 0,
+          overall_accuracy: 0,
+          current_streak: 0
+        })
+        setError('Error cargando estadísticas. Mostrando valores por defecto.')
+      }
+    } catch (error) {
+      console.error('❌ Error loading areas stats:', error)
+      // Fallback a datos en 0 si hay error de red
+      setIcfesAreas(getDefaultAreas())
+      setGeneralStats({
+        overall_progress: 0,
+        total_questions_answered: 0,
+        overall_accuracy: 0,
+        current_streak: 0
+      })
+      setError('Error de conexión. Mostrando valores por defecto.')
+    } finally {
+      setDataLoading(false)
+    }
+  }
+
+  // Áreas por defecto (todo en 0) para usuarios nuevos o errores
+  const getDefaultAreas = (): ICFESArea[] => [
     {
       id: 'matematicas',
       name: 'Matemáticas',
       description: 'Álgebra, geometría, trigonometría, cálculo y estadística',
       icon: '🧮',
       color: '#00D9FF',
-      progress: 65,
+      progress: 0,
       totalQuestions: 150,
-      completedQuestions: 98,
-      averageScore: 75,
-      difficulty: 'Intermedio'
+      completedQuestions: 0,
+      averageScore: 0,
+      difficulty: 'Básico'
     },
     {
       id: 'ingles',
@@ -38,10 +124,10 @@ export default function PracticePage() {
       description: 'Reading comprehension, grammar, vocabulary and listening',
       icon: '🗣️',
       color: '#39FF14',
-      progress: 45,
+      progress: 0,
       totalQuestions: 120,
-      completedQuestions: 54,
-      averageScore: 68,
+      completedQuestions: 0,
+      averageScore: 0,
       difficulty: 'Básico'
     },
     {
@@ -50,11 +136,11 @@ export default function PracticePage() {
       description: 'Física, química, biología y ciencias de la tierra',
       icon: '🔬',
       color: '#9333EA',
-      progress: 72,
+      progress: 0,
       totalQuestions: 140,
-      completedQuestions: 101,
-      averageScore: 82,
-      difficulty: 'Avanzado'
+      completedQuestions: 0,
+      averageScore: 0,
+      difficulty: 'Básico'
     },
     {
       id: 'sociales-ciudadanas',
@@ -62,11 +148,11 @@ export default function PracticePage() {
       description: 'Historia, geografía, política, economía y competencias ciudadanas',
       icon: '🏛️',
       color: '#FFA500',
-      progress: 58,
+      progress: 0,
       totalQuestions: 130,
-      completedQuestions: 75,
-      averageScore: 71,
-      difficulty: 'Intermedio'
+      completedQuestions: 0,
+      averageScore: 0,
+      difficulty: 'Básico'
     },
     {
       id: 'lectura-critica',
@@ -74,11 +160,11 @@ export default function PracticePage() {
       description: 'Comprensión lectora, análisis textual y competencias comunicativas',
       icon: '📖',
       color: '#FFD700',
-      progress: 80,
+      progress: 0,
       totalQuestions: 110,
-      completedQuestions: 88,
-      averageScore: 85,
-      difficulty: 'Avanzado'
+      completedQuestions: 0,
+      averageScore: 0,
+      difficulty: 'Básico'
     }
   ]
 
@@ -91,6 +177,22 @@ export default function PracticePage() {
     }
   }
 
+  // Mostrar loader mientras cargan los datos
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-abyss text-neonSystem pt-20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="epic-card p-8 text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-neonSystem border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="system-text text-neonSystem/70">Cargando estadísticas ICFES...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-abyss text-neonSystem pt-20">
       <div className="container mx-auto px-4 py-8">
@@ -100,39 +202,53 @@ export default function PracticePage() {
           <p className="system-text text-xl text-neonSystem/80 max-w-3xl mx-auto">
             Domina las 5 áreas del examen ICFES con nuestro sistema de práctica adaptativo
           </p>
+          {!user && (
+            <div className="mt-4 p-4 bg-neonSystem/10 rounded-lg border border-neonSystem/30">
+              <p className="system-text text-neonSystem/70 mb-2">
+                💡 <Link href="/auth/login" className="text-neonCyan hover:underline">Inicia sesión</Link> para ver tus estadísticas reales
+              </p>
+            </div>
+          )}
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/10 rounded-lg border border-red-500/30">
+              <p className="system-text text-red-400 text-sm">⚠️ {error}</p>
+            </div>
+          )}
         </div>
 
-        {/* Stats Overview */}
+        {/* Stats Overview - Ahora dinámicas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="epic-card p-4 text-center">
             <div className="text-2xl text-neonSystem mb-2">📊</div>
             <div className="epic-title text-lg text-levelUp">Progreso Total</div>
             <div className="system-text text-2xl text-neonGreen">
-              {Math.round(icfesAreas.reduce((acc, area) => acc + area.progress, 0) / icfesAreas.length)}%
+              {generalStats ? Math.round(generalStats.overall_progress) : 0}%
             </div>
           </div>
           <div className="epic-card p-4 text-center">
             <div className="text-2xl text-neonSystem mb-2">❓</div>
             <div className="epic-title text-lg text-levelUp">Preguntas</div>
             <div className="system-text text-2xl text-neonSystem">
-              {icfesAreas.reduce((acc, area) => acc + area.completedQuestions, 0)}
+              {generalStats ? generalStats.total_questions_answered : 0}
             </div>
           </div>
           <div className="epic-card p-4 text-center">
             <div className="text-2xl text-neonSystem mb-2">🎯</div>
             <div className="epic-title text-lg text-levelUp">Precisión</div>
             <div className="system-text text-2xl text-brightPurple">
-              {Math.round(icfesAreas.reduce((acc, area) => acc + area.averageScore, 0) / icfesAreas.length)}%
+              {generalStats ? Math.round(generalStats.overall_accuracy) : 0}%
             </div>
           </div>
           <div className="epic-card p-4 text-center">
             <div className="text-2xl text-neonSystem mb-2">🔥</div>
             <div className="epic-title text-lg text-levelUp">Racha</div>
-            <div className="system-text text-2xl text-neonCyan">12 días</div>
+            <div className="system-text text-2xl text-neonCyan">
+              {generalStats ? generalStats.current_streak : 0} días
+            </div>
           </div>
         </div>
 
-        {/* ICFES Areas Grid */}
+        {/* ICFES Areas Grid - Ahora dinámicas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {icfesAreas.map((area) => (
             <div
@@ -232,9 +348,9 @@ export default function PracticePage() {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="system-text text-neonSystem/60">Mejor Racha</div>
-                      <div className="epic-title text-lg text-neonGreen">
-                        {Math.floor(Math.random() * 20) + 5} días
+                      <div className="system-text text-neonSystem/60">Dificultad</div>
+                      <div className="epic-title text-lg" style={{ color: getDifficultyColor(area.difficulty) }}>
+                        {area.difficulty}
                       </div>
                     </div>
                   </div>
@@ -259,22 +375,24 @@ export default function PracticePage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-12 text-center">
-          <h3 className="epic-title text-2xl mb-6 text-levelUp">ACCIONES RÁPIDAS</h3>
-          <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <Link 
-              href="/prueba/completa"
-              className="btn-primary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider bg-gradient-to-r from-levelUp to-neonCyan"
-            >
-              🏗️ SIMULACRO COMPLETO ICFES
-            </Link>
-            <Link 
-              href="/learning-path"
-              className="btn-secondary px-8 py-4 text-lg font-bold rounded-lg epic-title tracking-wider"
-            >
-              🎓 CREAR PLAN DE APRENDIZAJE
-            </Link>
-          </div>
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link href="/prueba/completa" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">🏛️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Simulacro Completo</h3>
+            <p className="system-text text-sm text-neonSystem/70">Practica las 5 áreas como en el ICFES real</p>
+          </Link>
+          
+          <Link href="/battle" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">⚔️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Duelo de Conocimiento</h3>
+            <p className="system-text text-sm text-neonSystem/70">Compite contra otros estudiantes</p>
+          </Link>
+          
+          <Link href="/learning-path" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">🗺️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Plan Personalizado</h3>
+            <p className="system-text text-sm text-neonSystem/70">Ruta de estudio adaptada a ti</p>
+          </Link>
         </div>
       </div>
     </div>

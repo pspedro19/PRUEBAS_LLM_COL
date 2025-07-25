@@ -1,13 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-  // Mock user stats for now
-  return NextResponse.json({
-    level: 1,
-    xp: 0,
-    streak: 0,
-    coins: 0,
-    totalQuestions: 0,
-    correctAnswers: 0,
-  });
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ success: false, message: 'No authorization header' }, { status: 401 });
+    }
+
+    const backendUrl = 'http://mathquest-backend:8000';
+    const response = await fetch(`${backendUrl}/api/auth/user-stats/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error('Error in user stats route:', error);
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Internal server error' 
+    }, { status: 500 });
+  }
 } 

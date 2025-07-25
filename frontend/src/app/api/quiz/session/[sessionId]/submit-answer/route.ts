@@ -18,7 +18,8 @@ export async function POST(
 
     // Forward to backend - Use internal Docker networking
     const backendUrl = 'http://mathquest-backend:8000';
-    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/submit-answer`, {
+    // ✅ FIXED: Agregar trailing slash
+    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/submit-answer/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

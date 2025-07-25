@@ -468,8 +468,9 @@ def complete_assessment(request):
             user.vocational_test_completed = True
             user.assigned_role = assigned_role
             
-            # Dar experiencia por completar la evaluación
-            user.add_experience(200)  # Bonus por completar evaluación
+            # ❌ REMOVED: No dar experiencia por evaluaciones vocacionales
+            # Las evaluaciones son solo para determinar el rol, no para ganar XP
+            # user.add_experience(200)  # Bonus por completar evaluación
         
         user.save()
         
@@ -661,4 +662,187 @@ class CheckEmailView(APIView):
             'email': email,
             'available': is_available,
             'message': 'Email disponible' if is_available else 'Email ya está registrado'
-        }) 
+        })
+
+
+@extend_schema(
+    summary="Obtener estadísticas del usuario",
+    description="Obtiene las estadísticas actuales del usuario incluyendo XP, nivel y progreso",
+    responses={200: {
+        'type': 'object',
+        'properties': {
+            'success': {'type': 'boolean'},
+            'data': {
+                'type': 'object',
+                'properties': {
+                    'total_xp': {'type': 'integer'},
+                    'level': {'type': 'integer'},
+                    'hero_class': {'type': 'string'},
+                    'xp_for_next_level': {'type': 'integer'},
+                    'total_questions_answered': {'type': 'integer'},
+                    'accuracy': {'type': 'number'},
+                }
+            }
+        }
+    }}
+)
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_user_stats(request):
+    """Obtiene las estadísticas del usuario"""
+    print(f"🔍 get_user_stats called for user: {request.user}")
+    
+    try:
+        user = request.user
+        print(f"🔍 User details: id={user.id}, username={user.username}, xp={user.experience_points}, level={user.level}")
+        
+        # Obtener estadísticas básicas
+        stats_data = {
+            'total_xp': user.experience_points,
+            'level': user.level,
+            'hero_class': user.get_hero_class_display(),
+            'hero_class_code': user.hero_class,
+        }
+        
+        # Calcular XP necesaria para siguiente nivel (simplificado)
+        xp_for_next_level = (user.level * 100) - user.experience_points
+        if xp_for_next_level < 0:
+            xp_for_next_level = 0
+        stats_data['xp_for_next_level'] = xp_for_next_level
+        
+        # Obtener estadísticas de quiz si existen
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                # Contar total de preguntas respondidas
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM icfes_userquestionresponse 
+                    WHERE user_id = %s
+                """, [user.id])
+                total_questions = cursor.fetchone()[0] or 0
+                
+                # Calcular precisión
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM icfes_userquestionresponse 
+                    WHERE user_id = %s AND is_correct = true
+                """, [user.id])
+                correct_answers = cursor.fetchone()[0] or 0
+                
+                accuracy = (correct_answers / total_questions * 100) if total_questions > 0 else 0
+                
+                stats_data.update({
+                    'total_questions_answered': total_questions,
+                    'correct_answers': correct_answers,
+                    'accuracy': round(accuracy, 1)
+                })
+        except Exception as e:
+            print(f"Error calculating quiz stats: {e}")
+            stats_data.update({
+                'total_questions_answered': 0,
+                'correct_answers': 0,
+                'accuracy': 0
+            })
+        
+        print(f"✅ Returning stats_data: {stats_data}")
+        return Response({
+            'success': True,
+            'data': stats_data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_user_stats: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error obteniendo estadísticas: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@extend_schema(
+    summary="Actualizar XP del usuario",
+    description="Añade experiencia al usuario y actualiza nivel si es necesario",
+    request={
+        'type': 'object',
+        'properties': {
+            'xp_gained': {'type': 'integer', 'minimum': 1}
+        },
+        'required': ['xp_gained']
+    },
+    responses={200: {
+        'type': 'object',
+        'properties': {
+            'success': {'type': 'boolean'},
+            'data': {
+                'type': 'object',
+                'properties': {
+                    'total_xp': {'type': 'integer'},
+                    'level': {'type': 'integer'},
+                    'xp_gained': {'type': 'integer'},
+                    'level_up': {'type': 'boolean'},
+                    'new_level': {'type': 'integer'},
+                }
+            }
+        }
+    }}
+)
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def update_user_xp(request):
+    """Actualiza la experiencia del usuario"""
+    print(f"🔍 update_user_xp called for user: {request.user}")
+    print(f"🔍 Request data: {request.data}")
+    
+    try:
+        user = request.user
+        xp_gained = request.data.get('xp_gained')
+        
+        print(f"🔍 XP to add: {xp_gained}")
+        
+        if not xp_gained or xp_gained <= 0:
+            return Response({
+                'success': False,
+                'message': 'xp_gained debe ser un número positivo'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Guardar nivel actual para detectar level up
+        old_level = user.level
+        old_xp = user.experience_points
+        
+        print(f"🔍 Before: level={old_level}, xp={old_xp}")
+        
+        # Añadir experiencia usando el método del modelo
+        user.add_experience(xp_gained)
+        user.save()  # ✨ IMPORTANTE: Guardar después de add_experience
+        
+        print(f"🔍 After: level={user.level}, xp={user.experience_points}")
+        
+        # Detectar si hubo level up
+        level_up = user.level > old_level
+        
+        response_data = {
+            'total_xp': user.experience_points,
+            'level': user.level,
+            'xp_gained': xp_gained,
+            'level_up': level_up,
+            'previous_level': old_level,
+            'previous_xp': old_xp
+        }
+        
+        if level_up:
+            response_data['new_level'] = user.level
+            response_data['message'] = f'¡Felicidades! Has subido al nivel {user.level}!'
+        
+        print(f"✅ Returning response_data: {response_data}")
+        
+        return Response({
+            'success': True,
+            'data': response_data
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in update_user_xp: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error actualizando XP: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

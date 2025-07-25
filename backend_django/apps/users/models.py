@@ -136,27 +136,28 @@ class User(AbstractUser):
     
     def can_level_up(self):
         """Verifica si el usuario puede subir de nivel"""
-        from django.conf import settings
-        required_xp = settings.GAME_SETTINGS['LEVELS_REQUIRED_FOR_PROMOTION'].get(self.hero_class, 100)
-        return self.experience_points >= (required_xp * self.level)
+        # Lógica simplificada: 100 XP por nivel
+        required_xp = 100 * self.level
+        return self.experience_points >= required_xp
     
     def add_experience(self, amount):
         """Añade experiencia al usuario y verifica level up"""
         self.experience_points += amount
         
-        # Verificar si puede subir de nivel
-        while self.can_level_up():
+        # Verificar si puede subir de nivel (máximo 3 niveles por vez para evitar loops infinitos)
+        levels_gained = 0
+        while self.can_level_up() and levels_gained < 3:
             self.level += 1
+            levels_gained += 1
             
-            # Verificar si puede subir de clase
-            if self.level >= 10:  # Lógica simplificada
+            # Verificar si puede subir de clase (cada 10 niveles)
+            if self.level >= 10:
                 classes = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'S+']
-                current_index = classes.index(self.hero_class)
+                current_index = classes.index(self.hero_class) if self.hero_class in classes else 0
                 if current_index < len(classes) - 1:
                     self.hero_class = classes[current_index + 1]
                     self.level = 1  # Reset level para nueva clase
         
-        self.save()
         return self
     
     @property

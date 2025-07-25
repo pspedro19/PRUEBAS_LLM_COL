@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-abyss text-neonSystem font-epicUI min-h-screen gradient-hero`}>
+      <body className={`${inter.className} bg-abyss text-neonSystem min-h-screen gradient-hero`}>
         <Providers>
           <div className="relative z-10">
             {children}

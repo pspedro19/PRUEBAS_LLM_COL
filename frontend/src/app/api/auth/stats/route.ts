@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Forward to FastAPI backend - Use internal Docker networking
+    // Forward to Django backend - Use internal Docker networking
     const backendUrl = 'http://mathquest-backend:8000';
+    // ✅ FIXED: Usar endpoint completo que incluye assessments, no solo user-stats
     const response = await fetch(`${backendUrl}/api/auth/stats/`, {
       method: 'GET',
       headers: {

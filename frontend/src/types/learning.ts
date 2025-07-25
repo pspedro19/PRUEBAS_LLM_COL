@@ -1,40 +1,77 @@
 export interface LearningPath {
-  id: string
+  id: number // Backend devuelve number, no string
   name: string
   description: string
-  progress: number
-  estimatedHours: number
+  difficulty_level: string // Backend usa difficulty_level
+  estimated_duration_hours: number // Backend usa estimated_duration_hours
+  total_units: number // Backend incluye total_units
   units: Unit[]
-  targetAreas: string[]
-  weeklyGoal: number
-  pathType: 'ICFES_PREP' | 'SUBJECT_MASTERY' | 'SKILL_DEVELOPMENT' | 'CUSTOM'
-  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'ADAPTIVE'
+  progress?: {
+    completed_units: number
+    total_units: number
+    completion_percentage: number
+    current_week: number
+    estimated_weeks: number
+  }
+  personalization?: {
+    template_name: string
+    color_theme: string
+    focus_areas: string[]
+  }
+  // Propiedades opcionales para compatibilidad hacia atrás
+  estimatedHours?: number
+  targetAreas?: string[]
+  weeklyGoal?: number
+  pathType?: 'ICFES_PREP' | 'SUBJECT_MASTERY' | 'SKILL_DEVELOPMENT' | 'CUSTOM'
+  difficulty?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' | 'ADAPTIVE'
 }
 
 export interface Unit {
-  id: string
-  position: number
+  id: number // Backend devuelve number
+  order?: number // Backend usa order, no position
   title: string
-  type: 'foundation' | 'core' | 'practice' | 'advanced' | 'assessment'
-  progress: number
+  description: string
+  icon?: string // Backend incluye icon
+  unit_type?: 'FOUNDATION' | 'CORE' | 'PRACTICE' | 'ASSESSMENT' // Backend usa estos valores
+  xp_reward?: number // Backend usa xp_reward
+  difficulty_modifier?: number // Backend incluye difficulty_modifier
+  estimated_duration_minutes?: number // Backend usa estimated_duration_minutes
   lessons: Lesson[]
-  locked: boolean
-  xpReward: number
-  estimatedDuration: number
-  description?: string
+  metadata?: {
+    color_theme?: string
+    focus_topics?: string[]
+    template_name?: string
+    learning_style?: string
+    difficulty_level?: string
+    weak_areas_focus?: string[]
+    practice_intensity?: string
+    target_score_range?: number[]
+    estimated_duration_original?: number
+  }
+  // Propiedades opcionales para compatibilidad hacia atrás
+  position?: number
+  type?: 'foundation' | 'core' | 'practice' | 'advanced' | 'assessment'
+  progress?: number
+  locked?: boolean
+  xpReward?: number
+  estimatedDuration?: number
 }
 
 export interface Lesson {
-  id: string
+  id: number // Backend devuelve number
   title: string
   type: 'INTRO' | 'CONCEPT' | 'PRACTICE' | 'QUIZ' | 'STORY' | 'CHALLENGE'
-  duration: number
-  completed: boolean
+  completed: boolean // Backend incluye completed
+  duration_minutes?: number // Backend puede incluir duration_minutes
+  order?: number // Backend incluye order
+  
+  // Propiedades opcionales para compatibilidad
+  duration?: number
   score?: number
-  xpReward: number
-  passingScore: number
-  maxAttempts: number
-  contentTypes: ContentType[]
+  xpReward?: number
+  passingScore?: number
+  maxAttempts?: number
+  contentTypes?: ContentType[]
 }
 
 export type ContentType = 'video' | 'interactive' | 'practice' | 'reading' | 'quiz'

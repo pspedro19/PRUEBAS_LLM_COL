@@ -165,7 +165,7 @@ class UserPathAchievementSerializer(serializers.ModelSerializer):
             'id', 'achievement', 'enrollment',
             'progress_when_earned', 'xp_earned',
             'achievement_data', 'earned_at'
-        ]
+        ] 
 
 
 class LearningPathReviewSerializer(serializers.ModelSerializer):

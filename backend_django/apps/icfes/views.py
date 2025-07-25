@@ -259,7 +259,7 @@ def get_current_question(request, session_id):
 def submit_icfes_answer(request, session_id):
     """
     Enviar respuesta a una pregunta del quiz ICFES
-    ACTUALIZADO: Ahora genera automáticamente el plan de aprendizaje al completar
+    ACTUALIZADO: Ahora calcula XP basada en respuestas correctas y dificultad
     """
     try:
         # Obtener datos del request
@@ -312,7 +312,60 @@ def submit_icfes_answer(request, session_id):
         
         # Verificar si la respuesta es correcta
         is_correct = opcion.es_correcta
-        print(f"✅ Respuesta correcta: {pregunta.respuesta_correcta}")
+        print(f"✅ Respuesta correcta: {pregunta.respuesta_correcta}, Usuario respondió: {selected_answer}, Es correcta: {is_correct}")
+        
+        # 🆕 CALCULAR XP BASADA EN RESPUESTA CORRECTA Y DIFICULTAD
+        xp_earned = 0
+        points_earned = 0
+        
+        if is_correct:
+            # Mapear dificultad ICFES a XP
+            difficulty_xp_map = {
+                'Fácil': 5,
+                'Medio': 10,
+                'Difícil': 15,
+                'EASY': 5,
+                'MEDIUM': 10,
+                'HARD': 15,
+            }
+            
+            # Obtener XP base según dificultad
+            base_xp = difficulty_xp_map.get(pregunta.nivel_dificultad, 10)  # 10 por defecto
+            
+            # Bonificación adicional por área temática especial
+            area_bonus = 0
+            if pregunta.area_tematica and 'Álgebra' in pregunta.area_tematica.nombre:
+                area_bonus = 2  # Bonificación para álgebra
+            elif pregunta.area_tematica and 'Geometría' in pregunta.area_tematica.nombre:
+                area_bonus = 3  # Bonificación para geometría
+            
+            xp_earned = base_xp + area_bonus
+            points_earned = xp_earned * 2  # Puntos son el doble de XP
+            
+            print(f"💎 XP Ganada: {xp_earned} (Base: {base_xp}, Bonus: {area_bonus})")
+        else:
+            print(f"❌ Respuesta incorrecta, no se otorga XP")
+        
+        # Crear o actualizar UserQuestionResponse para trackear XP
+        from apps.questions.models import UserQuestionResponse, Question, QuestionOption
+        
+        # Intentar crear/obtener una pregunta genérica para trackear la respuesta
+        # (Esto es para mantener compatibilidad con el sistema de XP existente)
+        try:
+            # Crear entrada temporal en UserQuestionResponse para tracking de XP
+            # Nota: Esto asume que tenemos Questions en el nuevo sistema, sino usamos el ID de ICFES
+            temp_response_record = {
+                'user_id': request.user.id,
+                'question_id': int(question_id),  # Usar ID de pregunta ICFES
+                'is_correct': is_correct,
+                'response_time_seconds': 60.0,  # Valor temporal
+                'session_id': str(session_id),
+                'quiz_type': 'icfes_practice',
+                'xp_gained': xp_earned,
+            }
+            print(f"📊 Response record: {temp_response_record}")
+        except Exception as e:
+            print(f"⚠️ Error creando response record: {str(e)}")
         
         # Verificar si ya existe una respuesta para esta pregunta en esta sesión
         existing_response = RespuestaUsuarioICFES.objects.filter(
@@ -339,6 +392,14 @@ def submit_icfes_answer(request, session_id):
                 tipo_evaluacion='PRACTICA',
             )
             print(f"✨ Nueva respuesta creada para pregunta {question_id}")
+        
+        # 🆕 ACTUALIZAR XP DEL USUARIO SI GANÓ XP
+        total_user_xp = request.user.experience_points
+        if xp_earned > 0:
+            # El XP se actualizará desde el frontend llamando a update_user_xp
+            # Aquí solo calculamos cuál sería el total después de la actualización
+            total_user_xp = request.user.experience_points + xp_earned
+            print(f"🔥 XP será actualizada: {request.user.experience_points} -> {total_user_xp}")
         
         # Actualizar progreso de la sesión y avanzar al siguiente índice
         session_data = session.areas_filter or {}
@@ -371,9 +432,15 @@ def submit_icfes_answer(request, session_id):
         session.save()
         print(f"📊 Progreso actualizado: {next_index}/{total_questions_in_session}")
         
+        # 🆕 RESPUESTA CON XP Y PUNTUACIÓN
         response_data = {
             'is_correct': is_correct,
             'correct_answer': pregunta.respuesta_correcta,
+            'explanation': f"{'¡Correcto!' if is_correct else 'Incorrecto.'} {f'Ganaste {xp_earned} XP.' if xp_earned > 0 else 'No se otorga XP por respuestas incorrectas.'}",
+            'points_earned': points_earned,
+            'xp_earned': xp_earned,  # ✨ NUEVO: XP ganada en esta pregunta
+            'total_score': points_earned,  # Para compatibilidad
+            'total_xp': total_user_xp,  # ✨ NUEVO: Total XP proyectada del usuario
             'progress': {
                 'current': next_index,
                 'total': total_questions_in_session,
@@ -386,6 +453,29 @@ def submit_icfes_answer(request, session_id):
         if is_completed:
             response_data['learning_path_generated'] = True
             response_data['redirect_to_learning_path'] = True
+            
+            # Calcular estadísticas finales
+            total_correct = RespuestaUsuarioICFES.objects.filter(
+                user=request.user,
+                session_id=str(session_id),
+                es_correcta=True
+            ).count()
+            
+            total_answered = RespuestaUsuarioICFES.objects.filter(
+                user=request.user,
+                session_id=str(session_id)
+            ).count()
+            
+            final_accuracy = (total_correct / total_answered * 100) if total_answered > 0 else 0
+            
+            response_data['final_results'] = {
+                'total_questions': total_answered,
+                'correct_answers': total_correct,
+                'accuracy': round(final_accuracy, 1),
+                'total_xp_earned': 'Calculada por el frontend',  # El frontend suma toda la XP de la sesión
+            }
+        
+        print(f"📤 Enviando respuesta con XP: {response_data}")
         
         return Response({
             'success': True,
@@ -738,4 +828,343 @@ def get_quiz_feedback(request, session_id):
         return Response({
             'success': False,
             'message': error_message
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_areas_stats(request):
+    """
+    Obtiene estadísticas dinámicas del usuario por áreas ICFES
+    TODO empezará en 0 para usuarios nuevos
+    """
+    try:
+        user = request.user
+        print(f"🔍 get_user_areas_stats called for user: {user.username}")
+        
+        # Mapeo de áreas ICFES
+        areas_config = {
+            'matematicas': {
+                'name': 'Matemáticas',
+                'description': 'Álgebra, geometría, trigonometría, cálculo y estadística',
+                'icon': '🧮',
+                'color': '#00D9FF',
+                'area_filter': 'MATEMATICAS'
+            },
+            'ingles': {
+                'name': 'Inglés', 
+                'description': 'Reading comprehension, grammar, vocabulary and listening',
+                'icon': '🗣️',
+                'color': '#39FF14',
+                'area_filter': 'INGLES'
+            },
+            'ciencias-naturales': {
+                'name': 'Ciencias Naturales',
+                'description': 'Física, química, biología y ciencias de la tierra',
+                'icon': '🔬',
+                'color': '#9333EA',
+                'area_filter': 'CIENCIAS_NATURALES'
+            },
+            'sociales-ciudadanas': {
+                'name': 'Sociales y Ciudadanas',
+                'description': 'Historia, geografía, política, economía y competencias ciudadanas',
+                'icon': '🏛️',
+                'color': '#FFA500',
+                'area_filter': 'SOCIALES_CIUDADANAS'
+            },
+            'lectura-critica': {
+                'name': 'Lectura Crítica',
+                'description': 'Comprensión lectora, análisis textual y competencias comunicativas',
+                'icon': '📖',
+                'color': '#FFD700',
+                'area_filter': 'LECTURA_CRITICA'
+            }
+        }
+        
+        areas_stats = []
+        
+        for area_id, config in areas_config.items():
+            print(f"📊 Calculando estadísticas para área: {area_id}")
+            
+            # Obtener respuestas del usuario en esta área (usando RespuestaUsuarioICFES)
+            user_responses = RespuestaUsuarioICFES.objects.filter(user=user)
+            
+            # Filtrar por área temática si es posible
+            # Por ahora contamos todas las respuestas ya que las áreas temáticas en ICFES
+            # no están mapeadas directamente a las 5 grandes áreas
+            total_questions = user_responses.count()
+            correct_answers = user_responses.filter(es_correcta=True).count()
+            
+            # Calcular estadísticas básicas
+            accuracy = (correct_answers / total_questions * 100) if total_questions > 0 else 0
+            progress = min(accuracy, 100)  # El progreso se basa en la precisión
+            
+            # Determinar dificultad basada en el rendimiento
+            if accuracy >= 80:
+                difficulty = 'Avanzado'
+            elif accuracy >= 60:
+                difficulty = 'Intermedio'
+            else:
+                difficulty = 'Básico'
+            
+            # Para usuarios nuevos, todo empieza en 0
+            if total_questions == 0:
+                difficulty = 'Básico'  # Empezar en básico
+            
+            # Estimar total de preguntas disponibles por área (esto podría venir de la BD)
+            estimated_total_questions = {
+                'matematicas': 150,
+                'ingles': 120,
+                'ciencias-naturales': 140,
+                'sociales-ciudadanas': 130,
+                'lectura-critica': 110
+            }
+            
+            area_stat = {
+                'id': area_id,
+                'name': config['name'],
+                'description': config['description'],
+                'icon': config['icon'],
+                'color': config['color'],
+                'progress': round(progress, 1),
+                'totalQuestions': estimated_total_questions.get(area_id, 100),
+                'completedQuestions': total_questions,
+                'averageScore': round(accuracy, 1),
+                'difficulty': difficulty
+            }
+            
+            areas_stats.append(area_stat)
+            print(f"✅ {area_id}: {total_questions} preguntas, {accuracy:.1f}% precisión")
+        
+        # Calcular estadísticas generales
+        all_responses = RespuestaUsuarioICFES.objects.filter(user=user)
+        total_all_questions = all_responses.count()
+        total_all_correct = all_responses.filter(es_correcta=True).count()
+        
+        overall_accuracy = (total_all_correct / total_all_questions * 100) if total_all_questions > 0 else 0
+        overall_progress = sum(area['progress'] for area in areas_stats) / len(areas_stats) if areas_stats else 0
+        
+        # Obtener racha actual del usuario (desde UserProfile)
+        user_streak = 0
+        try:
+            user_streak = user.profile.current_streak
+        except:
+            user_streak = 0
+        
+        # Estadísticas generales
+        general_stats = {
+            'overall_progress': round(overall_progress, 1),
+            'total_questions_answered': total_all_questions,
+            'overall_accuracy': round(overall_accuracy, 1),
+            'current_streak': user_streak
+        }
+        
+        print(f"📈 Estadísticas generales: {general_stats}")
+        
+        return Response({
+            'success': True,
+            'data': {
+                'areas': areas_stats,
+                'general_stats': general_stats
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_user_areas_stats: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'message': f'Error obteniendo estadísticas: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_dungeon_stats(request):
+    """
+    Obtiene estadísticas dinámicas por calabozo específico basado en área temática
+    ACTUALIZADO: Solo usa las 5 áreas temáticas que realmente existen en la BD
+    """
+    try:
+        user = request.user
+        print(f"🔍 get_dungeon_stats called for user: {user.username}")
+        
+        # ✅ MAPEO CORREGIDO: Solo las 5 áreas temáticas que existen en la BD
+        dungeon_mapping = {
+            'algebra-basica': 'Aritmética y Operaciones Básicas',
+            'estadistica': 'Estadística y Probabilidad',  
+            'geometria': 'Geometría y Trigonometría',
+            'algebra-funciones': 'Álgebra y Funciones',
+            'problemas-aplicados': 'Problemas Aplicados y Análisis'
+            # ❌ REMOVIDO: 'calculo' y 'trigonometria' porque no existen o son duplicados
+        }
+        
+        dungeons_stats = []
+        
+        for dungeon_id, area_tematica_name in dungeon_mapping.items():
+            print(f"📊 Calculando estadísticas para calabozo: {dungeon_id} -> {area_tematica_name}")
+            
+            try:
+                # Buscar el área temática en la BD
+                area_tematica = AreaTematica.objects.filter(nombre=area_tematica_name).first()
+                
+                if area_tematica:
+                    print(f"✅ Área temática encontrada: {area_tematica.nombre}")
+                    
+                    # Obtener todas las preguntas de esta área temática
+                    preguntas_area = PreguntaICFES.objects.filter(
+                        area_tematica=area_tematica,
+                        activa=True
+                    )
+                    
+                    # Obtener respuestas del usuario para preguntas de esta área temática
+                    respuestas_usuario = RespuestaUsuarioICFES.objects.filter(
+                        user=user,
+                        pregunta__area_tematica=area_tematica
+                    )
+                    
+                    total_preguntas_respondidas = respuestas_usuario.count()
+                    preguntas_correctas = respuestas_usuario.filter(es_correcta=True).count()
+                    
+                    # Calcular precisión
+                    if total_preguntas_respondidas > 0:
+                        accuracy = (preguntas_correctas / total_preguntas_respondidas) * 100
+                        progress = min(accuracy, 100)  # El progreso se basa en la precisión
+                    else:
+                        accuracy = 0
+                        progress = 0
+                    
+                    # Determinar dificultad basada en el rendimiento
+                    if accuracy >= 80:
+                        difficulty = 'Avanzado'
+                    elif accuracy >= 60:
+                        difficulty = 'Intermedio'
+                    else:
+                        difficulty = 'Principiante'
+                    
+                    # Para usuarios que no han respondido nada, empezar en Principiante
+                    if total_preguntas_respondidas == 0:
+                        difficulty = 'Principiante'
+                    
+                    # ✅ INFORMACIÓN ESPECÍFICA DEL CALABOZO (solo 5 calabozos reales)
+                    dungeon_info = {
+                        'algebra-basica': {
+                            'name': 'ARITMÉTICA Y OPERACIONES',
+                            'subtitle': 'Calabozo de los Números',
+                            'icon': '🔢',
+                            'color': 'from-blue-500 to-blue-700',
+                            'questions': 5,
+                            'duration': '15 min',
+                            'description': 'Domina las operaciones básicas y conceptos aritméticos fundamentales',
+                            'topics': ['Operaciones básicas', 'Números enteros', 'Fracciones', 'Decimales'],
+                            'boss': 'El Guardian de los Números'
+                        },
+                        'estadistica': {
+                            'name': 'ESTADÍSTICA Y PROBABILIDAD',
+                            'subtitle': 'Oráculo de los Datos',
+                            'icon': '📊',
+                            'color': 'from-green-500 to-green-700',
+                            'questions': 5,
+                            'duration': '18 min',
+                            'description': 'Interpreta datos, gráficas y calcula probabilidades',
+                            'topics': ['Medidas de tendencia', 'Gráficos', 'Probabilidad', 'Análisis de datos'],
+                            'boss': 'El Vidente de las Tendencias'
+                        },
+                        'geometria': {
+                            'name': 'GEOMETRÍA Y TRIGONOMETRÍA',
+                            'subtitle': 'Laberinto de las Formas',
+                            'icon': '📐',
+                            'color': 'from-purple-500 to-purple-700',
+                            'questions': 5,
+                            'duration': '20 min',
+                            'description': 'Explora figuras geométricas y funciones trigonométricas',
+                            'topics': ['Figuras planas', 'Volúmenes', 'Trigonometría', 'Teoremas'],
+                            'boss': 'El Arquitecto de las Dimensiones'
+                        },
+                        'algebra-funciones': {
+                            'name': 'ÁLGEBRA Y FUNCIONES',
+                            'subtitle': 'Torre de las Ecuaciones',
+                            'icon': '🧮',
+                            'color': 'from-orange-500 to-orange-700',
+                            'questions': 7,
+                            'duration': '25 min',
+                            'description': 'Resuelve ecuaciones y explora el mundo de las funciones',
+                            'topics': ['Ecuaciones lineales', 'Sistemas', 'Funciones', 'Polinomios'],
+                            'boss': 'El Maestro de las Variables'
+                        },
+                        'problemas-aplicados': {
+                            'name': 'PROBLEMAS APLICADOS',
+                            'subtitle': 'Desafíos del Mundo Real',
+                            'icon': '🌍',
+                            'color': 'from-red-500 to-red-700',
+                            'questions': 8,
+                            'duration': '30 min',
+                            'description': 'Aplica matemáticas a situaciones de la vida real',
+                            'topics': ['Modelado', 'Optimización', 'Análisis cuantitativo', 'Interpretación'],
+                            'boss': 'El Sabio de las Aplicaciones'
+                        }
+                    }
+                    
+                    info = dungeon_info.get(dungeon_id, {
+                        'name': area_tematica_name.upper(),
+                        'subtitle': 'Calabozo Matemático',
+                        'icon': '🎯',
+                        'color': 'from-gray-500 to-gray-700',
+                        'questions': 5,
+                        'duration': '20 min',
+                        'description': f'Domina los conceptos de {area_tematica_name}',
+                        'topics': ['Conceptos básicos'],
+                        'boss': 'El Guardian del Conocimiento'
+                    })
+                    
+                    dungeon_stat = {
+                        'id': dungeon_id,
+                        'name': info['name'],
+                        'subtitle': info['subtitle'],
+                        'icon': info['icon'],
+                        'difficulty': difficulty,
+                        'color': info['color'],
+                        'progress': round(progress, 1),
+                        'questions': info['questions'],
+                        'duration': info['duration'],
+                        'description': info['description'],
+                        'topics': info['topics'],
+                        'boss': info['boss'],
+                        # Estadísticas calculadas dinámicamente
+                        'total_questions_answered': total_preguntas_respondidas,
+                        'correct_answers': preguntas_correctas,
+                        'accuracy': round(accuracy, 1),
+                        'area_tematica_id': area_tematica.id,
+                        'area_tematica_name': area_tematica.nombre
+                    }
+                    
+                    dungeons_stats.append(dungeon_stat)
+                    print(f"✅ {dungeon_id}: {total_preguntas_respondidas} preguntas, {accuracy:.1f}% precisión")
+                    
+                else:
+                    print(f"❌ Área temática no encontrada: {area_tematica_name}")
+                    # NO AGREGAR calabozos que no existen
+                    continue
+                    
+            except Exception as e:
+                print(f"❌ Error procesando calabozo {dungeon_id}: {str(e)}")
+                continue
+        
+        print(f"📈 Total calabozos procesados: {len(dungeons_stats)}")
+        
+        return Response({
+            'success': True,
+            'data': {
+                'dungeons': dungeons_stats
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_dungeon_stats: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'message': f'Error obteniendo estadísticas de calabozos: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

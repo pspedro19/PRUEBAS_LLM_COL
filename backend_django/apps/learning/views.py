@@ -23,6 +23,9 @@ from .recommendation_engine import LearningRecommendationEngine
 # Importar modelos de ICFES para obtener resultados reales
 from apps.icfes.models import ICFESResult, UserICFESSession
 from apps.icfes.models_nuevo import RespuestaUsuarioICFES
+from django.contrib.auth import get_user_model
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 
 
 class LearningPathViewSet(viewsets.ModelViewSet):
@@ -588,3 +591,61 @@ class UserLessonProgressViewSet(viewsets.ModelViewSet):
                 'success': False,
                 'message': f'Error al completar lección: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+
+
+@api_view(['GET'])
+@authentication_classes([SessionAuthentication, TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def get_personalization_config(request):
+    """
+    Obtener configuración de personalización para un template específico
+    NUEVA VISTA: Para que el frontend pueda personalizar la experiencia
+    """
+    try:
+        template_name = request.GET.get('template_name')
+        user_id = request.GET.get('user_id')
+        
+        if not template_name:
+            return Response({
+                'success': False,
+                'error': 'template_name es requerido'
+            }, status=400)
+        
+        # Inicializar motor de recomendaciones
+        engine = LearningRecommendationEngine()
+        
+        # Obtener análisis del usuario si se proporciona user_id
+        analysis = None
+        if user_id:
+            try:
+                user = get_user_model().objects.get(id=user_id)
+                analysis = engine.analyze_quiz_results(user)
+            except get_user_model().DoesNotExist:
+                pass  # Continuar sin análisis
+        
+        # Obtener configuración de personalización
+        config = engine.get_personalization_config(template_name, analysis)
+        
+        if not config:
+            return Response({
+                'success': False,
+                'error': f'Template {template_name} no encontrado'
+            }, status=404)
+        
+        return Response({
+            'success': True,
+            'data': {
+                'template_name': template_name,
+                'personalization': config,
+                'has_user_analysis': analysis is not None
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_personalization_config: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return Response({
+            'success': False,
+            'error': f'Error del servidor: {str(e)}'
+        }, status=500) 

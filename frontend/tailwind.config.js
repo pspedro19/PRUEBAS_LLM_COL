@@ -86,12 +86,12 @@ module.exports = {
         divine: '#FF00FF',
       },
       fontFamily: {
-        epicTitle: ['Cinzel', 'UnifrakturMaguntia', 'serif'],
-        epicUI: ['Orbitron', 'Rajdhani', 'sans-serif'],
-        epicStats: ['Fira Code', 'JetBrains Mono', 'monospace'],
-        epicNarration: ['Crimson Text', 'Playfair Display', 'serif'],
+        epicTitle: ['Inter', 'Poppins', 'sans-serif'],
+        epicUI: ['Inter', 'Poppins', 'sans-serif'],
+        epicStats: ['Inter', 'Poppins', 'sans-serif'],
+        epicNarration: ['Inter', 'Poppins', 'sans-serif'],
         body: ['Inter', 'Poppins', 'sans-serif'],
-        display: ['Orbitron', 'Rajdhani', 'sans-serif'],
+        display: ['Inter', 'Poppins', 'sans-serif'],
       },
       backgroundImage: {
         'epic-tower': "url('/assets/bg-tower.jpg')",

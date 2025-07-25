@@ -50,7 +50,8 @@ export default function DashboardPage() {
           return
         }
 
-        const response = await fetch('/api/auth/stats', {
+        // ✅ FIXED: Usar user/stats que devuelve datos actualizados
+        const response = await fetch('/api/user/stats', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -61,8 +62,45 @@ export default function DashboardPage() {
           throw new Error(`HTTP ${response.status}`)
         }
 
-        const data = await response.json()
-        setStats(data)
+        const apiResponse = await response.json()
+        console.log('📦 Dashboard API Response:', apiResponse)
+        
+        if (apiResponse.success && apiResponse.data) {
+          // ✅ CONVERTIR formato nuevo al formato esperado por el dashboard
+          const convertedStats = {
+            user_info: {
+              username: user?.username || 'Usuario',
+              hero_class: apiResponse.data.hero_class_code || 'F',
+              level: apiResponse.data.level || 1,
+              experience_points: apiResponse.data.total_xp || 0,
+              avatar_evolution_stage: 1
+            },
+            academic_progress: {
+              questions_answered: apiResponse.data.total_questions_answered || 0,
+              correct_answers: apiResponse.data.correct_answers || 0,
+              accuracy: apiResponse.data.accuracy || 0,
+              study_minutes: 0,
+              current_streak: 0,
+              max_streak: 0
+            },
+            game_stats: {
+              current_vitality: 100,
+              improvement_rate: 0,
+              learning_style: 'Adaptativo',
+              difficulty_preference: 'medium'
+            },
+            assessments: {
+              initial_completed: user?.assessments?.initial_completed || false,
+              vocational_completed: user?.assessments?.vocational_completed || false,
+              assigned_role: user?.assessments?.assigned_role || 'DPS'
+            }
+          }
+          
+          console.log('✅ Converted stats for dashboard:', convertedStats)
+          setStats(convertedStats)
+        } else {
+          throw new Error(apiResponse.message || 'Invalid API response format')
+        }
       } catch (error) {
         console.error('Error fetching user stats:', error)
         setError('Error loading user data')

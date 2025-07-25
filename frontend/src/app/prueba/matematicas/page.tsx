@@ -1,15 +1,92 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import EpicNavigation from '@/components/EpicNavigation'
 
+interface MathDungeon {
+  id: string
+  name: string
+  subtitle: string
+  icon: string
+  difficulty: string
+  color: string
+  progress: number
+  questions: number
+  duration: string
+  description: string
+  topics: string[]
+  boss: string
+  total_questions_answered?: number
+  correct_answers?: number
+  accuracy?: number
+  area_tematica_id?: number | null
+  area_tematica_name?: string
+}
+
 export default function PruebaMatematicas() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const [selectedLevel, setSelectedLevel] = useState<string>('')
+  const [mathDungeons, setMathDungeons] = useState<MathDungeon[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   
-  const mathDungeons = [
+  // Cargar estadísticas cuando el usuario esté disponible
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        loadDungeonStats()
+      } else {
+        // Usuario no logueado: mostrar calabozos con progreso en 0
+        setMathDungeons(getDefaultDungeons())
+        setDataLoading(false)
+      }
+    }
+  }, [user, loading])
+
+  const loadDungeonStats = async () => {
+    setDataLoading(true)
+    setError(null)
+    
+    try {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        throw new Error('No token available')
+      }
+
+      console.log('🔄 Cargando estadísticas de calabozos...')
+      
+      const response = await fetch('/api/icfes/dungeon-stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      console.log('📊 Dungeon stats response:', data)
+
+      if (data.success) {
+        setMathDungeons(data.data.dungeons)
+        console.log('✅ Estadísticas de calabozos cargadas exitosamente')
+      } else {
+        console.error('❌ Error en respuesta:', data.message)
+        // Fallback a datos en 0 si hay error
+        setMathDungeons(getDefaultDungeons())
+        setError('Error cargando estadísticas. Mostrando valores por defecto.')
+      }
+    } catch (error) {
+      console.error('❌ Error loading dungeon stats:', error)
+      // Fallback a datos en 0 si hay error de red
+      setMathDungeons(getDefaultDungeons())
+      setError('Error de conexión. Mostrando valores por defecto.')
+    } finally {
+      setDataLoading(false)
+    }
+  }
+
+  // Calabozos por defecto (todo en 0) para usuarios nuevos o errores
+  const getDefaultDungeons = (): MathDungeon[] => [
     {
       id: 'algebra-basica',
       name: 'ARITMÉTICA Y OPERACIONES',
@@ -22,73 +99,88 @@ export default function PruebaMatematicas() {
       duration: '15 min',
       description: 'Domina las operaciones básicas y conceptos aritméticos fundamentales',
       topics: ['Operaciones básicas', 'Números enteros', 'Fracciones', 'Decimales'],
-      boss: 'El Guardian de los Números'
+      boss: 'El Guardian de los Números',
+      total_questions_answered: 0,
+      correct_answers: 0,
+      accuracy: 0
     },
     {
       id: 'estadistica',
       name: 'ESTADÍSTICA Y PROBABILIDAD',
       subtitle: 'Oráculo de los Datos',
       icon: '📊',
-      difficulty: 'Intermedio',
+      difficulty: 'Principiante',
       color: 'from-green-500 to-green-700',
       progress: 0,
       questions: 5,
       duration: '18 min',
       description: 'Interpreta datos, gráficas y calcula probabilidades',
       topics: ['Medidas de tendencia', 'Gráficos', 'Probabilidad', 'Análisis de datos'],
-      boss: 'El Vidente de las Tendencias'
+      boss: 'El Vidente de las Tendencias',
+      total_questions_answered: 0,
+      correct_answers: 0,
+      accuracy: 0
     },
     {
       id: 'geometria',
       name: 'GEOMETRÍA Y TRIGONOMETRÍA',
       subtitle: 'Laberinto de las Formas',
       icon: '📐',
-      difficulty: 'Intermedio',
+      difficulty: 'Principiante',
       color: 'from-purple-500 to-purple-700',
       progress: 0,
       questions: 5,
       duration: '20 min',
       description: 'Explora figuras geométricas y funciones trigonométricas',
       topics: ['Figuras planas', 'Volúmenes', 'Trigonometría', 'Teoremas'],
-      boss: 'El Arquitecto de las Dimensiones'
+      boss: 'El Arquitecto de las Dimensiones',
+      total_questions_answered: 0,
+      correct_answers: 0,
+      accuracy: 0
     },
     {
       id: 'algebra-funciones',
       name: 'ÁLGEBRA Y FUNCIONES',
       subtitle: 'Torre de las Ecuaciones',
       icon: '🧮',
-      difficulty: 'Avanzado',
+      difficulty: 'Principiante',
       color: 'from-orange-500 to-orange-700',
       progress: 0,
-      questions: 5,
-      duration: '22 min',
-      description: 'Resuelve ecuaciones complejas y analiza funciones',
-      topics: ['Ecuaciones', 'Sistemas', 'Funciones', 'Polinomios'],
-      boss: 'El Maestro de las Incógnitas'
+      questions: 7,
+      duration: '25 min',
+      description: 'Resuelve ecuaciones y explora el mundo de las funciones',
+      topics: ['Ecuaciones lineales', 'Sistemas', 'Funciones', 'Polinomios'],
+      boss: 'El Maestro de las Variables',
+      total_questions_answered: 0,
+      correct_answers: 0,
+      accuracy: 0
     },
     {
       id: 'problemas-aplicados',
       name: 'PROBLEMAS APLICADOS',
-      subtitle: 'Arena del Análisis',
-      icon: '🧩',
-      difficulty: 'Experto',
+      subtitle: 'Desafíos del Mundo Real',
+      icon: '🌍',
+      difficulty: 'Principiante',
       color: 'from-red-500 to-red-700',
       progress: 0,
-      questions: 5,
-      duration: '25 min',
-      description: 'Resuelve problemas complejos aplicando razonamiento lógico',
-      topics: ['Análisis', 'Razonamiento', 'Aplicaciones', 'Solución de problemas'],
-      boss: 'El Señor del Razonamiento'
+      questions: 8,
+      duration: '30 min',
+      description: 'Aplica matemáticas a situaciones de la vida real',
+      topics: ['Modelado', 'Optimización', 'Análisis cuantitativo', 'Interpretación'],
+      boss: 'El Sabio de las Aplicaciones',
+      total_questions_answered: 0,
+      correct_answers: 0,
+      accuracy: 0
     }
+    // ❌ REMOVIDOS: Los calabozos que no tienen área temática en la BD
   ]
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'Principiante': return 'text-green-400'
-      case 'Intermedio': return 'text-yellow-400'
-      case 'Avanzado': return 'text-orange-400'
-      case 'Experto': return 'text-red-400'
-      default: return 'text-purple-400'
+      case 'Principiante': return 'text-green-400 bg-green-400/20'
+      case 'Intermedio': return 'text-yellow-400 bg-yellow-400/20'
+      case 'Avanzado': return 'text-red-400 bg-red-400/20'
+      default: return 'text-gray-400 bg-gray-400/20'
     }
   }
 
@@ -96,23 +188,42 @@ export default function PruebaMatematicas() {
     switch (difficulty) {
       case 'Principiante': return '★☆☆☆☆'
       case 'Intermedio': return '★★★☆☆'
-      case 'Avanzado': return '★★★★☆'
-      case 'Experto': return '★★★★★'
-      default: return '★★★☆☆'
+      case 'Avanzado': return '★★★★★'
+      default: return '★☆☆☆☆'
     }
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-abyss text-neonSystem flex items-center justify-center">
-        <div className="epic-card p-8 text-center max-w-md">
-          <h2 className="epic-title text-2xl mb-4 text-levelUp">ACCESO RESTRINGIDO</h2>
-          <p className="system-text text-neonSystem/70 mb-6">
-            Debes iniciar sesión para acceder a los Calabozos Numéricos
-          </p>
-          <Link href="/auth/login" className="btn-primary px-6 py-3 rounded-none">
-            INICIAR SESIÓN
-          </Link>
+      <div className="min-h-screen bg-abyss text-neonSystem">
+        <EpicNavigation />
+        <div className="flex items-center justify-center min-h-[400px] pt-20">
+          <div className="epic-card p-8 text-center max-w-md">
+            <h2 className="epic-title text-2xl mb-4 text-levelUp">ACCESO RESTRINGIDO</h2>
+            <p className="system-text text-neonSystem/70 mb-6">
+              Debes iniciar sesión para acceder a los calabozos matemáticos
+            </p>
+            <Link href="/auth/login" className="btn-primary px-6 py-3">
+              INICIAR SESIÓN
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar loader mientras cargan los datos
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-abyss text-neonSystem">
+        <EpicNavigation />
+        <div className="container mx-auto px-4 py-8 pt-28">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="epic-card p-8 text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-neonSystem border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="system-text text-neonSystem/70">Cargando calabozos matemáticos...</p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -120,218 +231,231 @@ export default function PruebaMatematicas() {
 
   return (
     <div className="min-h-screen bg-abyss text-neonSystem">
+      <EpicNavigation />
+      
       {/* Header */}
-      <header className="relative z-20 section-depth border-b border-neonSystem/30">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-effect">
-                <span className="text-2xl font-bold text-white">🧮</span>
+      <header className="relative z-20 section-depth border-b border-neonSystem/30 pt-20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <h1 className="epic-title text-5xl mb-4 system-glow">
+              🧮 CALABOZOS MATEMÁTICOS 🧮
+            </h1>
+            <p className="system-text text-xl text-neonSystem/80 max-w-3xl mx-auto">
+              Explora los calabozos numéricos y domina cada área temática de las matemáticas ICFES
+            </p>
+            {!user && (
+              <div className="mt-4 p-4 bg-neonSystem/10 rounded-lg border border-neonSystem/30">
+                <p className="system-text text-neonSystem/70 mb-2">
+                  💡 <Link href="/auth/login" className="text-neonCyan hover:underline">Inicia sesión</Link> para ver tu progreso real
+                </p>
               </div>
-              <div>
-                <h1 className="epic-title text-2xl system-glow">CALABOZOS NUMÉRICOS</h1>
-                <p className="system-text text-sm text-neonSystem/70">Piso 1 - Matemáticas ICFES</p>
+            )}
+            {error && (
+              <div className="mt-4 p-4 bg-red-500/10 rounded-lg border border-red-500/30">
+                <p className="system-text text-red-400 text-sm">⚠️ {error}</p>
               </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="system-text text-xs text-neonSystem/60">Progreso General</p>
-                <p className="epic-title text-lg text-levelUp">Nivel 16</p>
-              </div>
-              <Link href="/" className="btn-secondary px-4 py-2 text-sm font-bold rounded-none border border-neonSystem/30 hover:border-neonSystem/60">
-                VOLVER
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 py-8">
-        <div className="container mx-auto px-4">
-          
-          {/* Welcome Section */}
-          <section className="mb-12">
-            <div className="text-center mb-8">
-              <h2 className="epic-title text-4xl mb-4 text-levelUp system-glow">BIENVENIDO AL PRIMER PISO</h2>
-              <p className="system-text text-lg text-neonSystem/80 max-w-3xl mx-auto mb-6">
-                Arquitecto {user.full_name}, has entrado a los <span className="text-levelUp font-bold">Calabozos Numéricos</span>, 
-                donde los números cobran vida y las ecuaciones se convierten en enemigos que debes conquistar.
-              </p>
-              <p className="system-text text-base text-neonSystem/70 max-w-2xl mx-auto">
-                Cada calabozo representa un tema específico de matemáticas del ICFES. 
-                Completa todos los calabozos para enfrentar al jefe final y ascender al siguiente piso.
-              </p>
-            </div>
+      {/* Dungeons Grid */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {mathDungeons.map((dungeon) => (
+            <div
+              key={dungeon.id}
+              className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300 cursor-pointer"
+              style={{
+                background: `linear-gradient(145deg, ${dungeon.color.replace('from-', 'rgba(').replace(' to-', ', 0.1) 0%, rgba(').replace('-500', '')}, 0.05) 100%)`,
+                borderColor: `${dungeon.color.includes('blue') ? '#3B82F6' : 
+                              dungeon.color.includes('green') ? '#10B981' :
+                              dungeon.color.includes('purple') ? '#8B5CF6' :
+                              dungeon.color.includes('orange') ? '#F97316' :
+                              dungeon.color.includes('red') ? '#EF4444' : '#6B7280'}40`,
+                boxShadow: selectedLevel === dungeon.id ? `0 0 20px ${
+                  dungeon.color.includes('blue') ? '#3B82F6' : 
+                  dungeon.color.includes('green') ? '#10B981' :
+                  dungeon.color.includes('purple') ? '#8B5CF6' :
+                  dungeon.color.includes('orange') ? '#F97316' :
+                  dungeon.color.includes('red') ? '#EF4444' : '#6B7280'
+                }40` : 'none'
+              }}
+              onClick={() => setSelectedLevel(selectedLevel === dungeon.id ? '' : dungeon.id)}
+            >
+              {/* Dungeon Icon */}
+              <div 
+                className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl border-2"
+                style={{
+                  backgroundColor: `${dungeon.color.includes('blue') ? '#3B82F6' : 
+                                    dungeon.color.includes('green') ? '#10B981' :
+                                    dungeon.color.includes('purple') ? '#8B5CF6' :
+                                    dungeon.color.includes('orange') ? '#F97316' :
+                                    dungeon.color.includes('red') ? '#EF4444' : '#6B7280'}20`,
+                  borderColor: dungeon.color.includes('blue') ? '#3B82F6' : 
+                              dungeon.color.includes('green') ? '#10B981' :
+                              dungeon.color.includes('purple') ? '#8B5CF6' :
+                              dungeon.color.includes('orange') ? '#F97316' :
+                              dungeon.color.includes('red') ? '#EF4444' : '#6B7280'
+                }}
+              >
+                {dungeon.icon}
+              </div>
 
-            {/* Floor Stats */}
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-              <div className="epic-card p-4 text-center bg-gradient-to-r from-blue-900/30 to-purple-900/30">
-                <div className="text-2xl mb-2">🏰</div>
-                <div className="epic-title text-lg text-levelUp">{mathDungeons.length}</div>
-                <div className="system-text text-xs text-neonSystem/70">Calabozos Disponibles</div>
-              </div>
-              
-              <div className="epic-card p-4 text-center bg-gradient-to-r from-green-900/30 to-teal-900/30">
-                <div className="text-2xl mb-2">✅</div>
-                <div className="epic-title text-lg text-levelUp">
-                  {mathDungeons.filter(d => d.progress === 100).length}
-                </div>
-                <div className="system-text text-xs text-neonSystem/70">Completados</div>
-              </div>
-              
-              <div className="epic-card p-4 text-center bg-gradient-to-r from-yellow-900/30 to-orange-900/30">
-                <div className="text-2xl mb-2">⚡</div>
-                <div className="epic-title text-lg text-levelUp">
-                  {Math.round(mathDungeons.reduce((acc, d) => acc + d.progress, 0) / mathDungeons.length)}%
-                </div>
-                <div className="system-text text-xs text-neonSystem/70">Progreso Total</div>
-              </div>
-              
-              <div className="epic-card p-4 text-center bg-gradient-to-r from-purple-900/30 to-indigo-900/30">
-                <div className="text-2xl mb-2">👑</div>
-                <div className="epic-title text-lg text-levelUp">16</div>
-                <div className="system-text text-xs text-neonSystem/70">Nivel Actual</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Dungeon Selection */}
-          <section className="mb-12">
-            <div className="text-center mb-8">
-              <h3 className="epic-title text-3xl mb-4 text-levelUp">ELIGE TU CALABOZO</h3>
-              <p className="system-text text-lg text-neonSystem/80 max-w-2xl mx-auto">
-                Cada calabozo presenta desafíos únicos. Completa los temas en orden o desafía 
-                directamente a los más difíciles.
+              {/* Title & Subtitle */}
+              <h3 className="epic-title text-2xl mb-2 text-neonSystem">
+                {dungeon.name}
+              </h3>
+              <p className="system-text text-sm text-neonSystem/60 mb-4">
+                {dungeon.subtitle}
               </p>
-            </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              {mathDungeons.map((dungeon) => (
-                <div key={dungeon.id} className="epic-card p-6 hover:scale-[1.02] transition-transform duration-300">
-                  <div className="flex items-start space-x-4">
-                    {/* Icon */}
-                    <div className={`w-16 h-16 bg-gradient-to-r ${dungeon.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-2xl text-white">{dungeon.icon}</span>
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="epic-title text-lg text-neonSystem mb-1">{dungeon.name}</h4>
-                          <p className="system-text text-sm text-neonSystem/70 mb-2">{dungeon.subtitle}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className={`system-text text-xs ${getDifficultyColor(dungeon.difficulty)} mb-1`}>
-                            {dungeon.difficulty}
-                          </div>
-                          <div className="text-xs text-yellow-400">
-                            {getDifficultyStars(dungeon.difficulty)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="system-text text-sm text-neonSystem/60 mb-3">{dungeon.description}</p>
-                      
-                      {/* Progress Bar */}
-                      <div className="mb-3">
-                        <div className="flex justify-between text-xs text-neonSystem/60 mb-1">
-                          <span>Progreso</span>
-                          <span>{dungeon.progress}%</span>
-                        </div>
-                        <div className="w-full bg-dungeon rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full bg-gradient-to-r ${dungeon.color}`}
-                            style={{ width: `${dungeon.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      
-                      {/* Stats */}
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex space-x-4 text-xs text-neonSystem/60">
-                          <span>⏱️ {dungeon.duration}</span>
-                          <span>📝 {dungeon.questions} preguntas</span>
-                        </div>
-                        <div className="text-xs text-neonSystem/60">
-                          👑 {dungeon.boss}
-                        </div>
-                      </div>
-                      
-                      {/* Topics */}
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-1">
-                          {dungeon.topics.map((topic) => (
-                            <span key={topic} className="text-xs bg-dungeon px-2 py-1 rounded text-neonSystem/70">
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {/* Action Button */}
-                      <Link 
-                        href={`/prueba/matematicas/${dungeon.id}`}
-                        className={`w-full py-3 text-sm font-bold rounded-none text-center block transition-all ${
-                          dungeon.progress === 100 
-                            ? 'btn-secondary border border-neonSystem/30 hover:border-neonSystem/60' 
-                            : 'btn-primary hover:scale-105'
-                        }`}
-                      >
-                        {dungeon.progress === 100 ? 'REPETIR CALABOZO' : 'ENTRAR AL CALABOZO'}
-                      </Link>
-                    </div>
+              {/* Progress Bar - Ahora dinámico */}
+              <div className="w-full bg-dungeon rounded-full h-3 mb-4">
+                <div 
+                  className="h-3 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${dungeon.progress}%`,
+                    backgroundColor: dungeon.color.includes('blue') ? '#3B82F6' : 
+                                    dungeon.color.includes('green') ? '#10B981' :
+                                    dungeon.color.includes('purple') ? '#8B5CF6' :
+                                    dungeon.color.includes('orange') ? '#F97316' :
+                                    dungeon.color.includes('red') ? '#EF4444' : '#6B7280',
+                    boxShadow: `0 0 8px ${dungeon.color.includes('blue') ? '#3B82F6' : 
+                                          dungeon.color.includes('green') ? '#10B981' :
+                                          dungeon.color.includes('purple') ? '#8B5CF6' :
+                                          dungeon.color.includes('orange') ? '#F97316' :
+                                          dungeon.color.includes('red') ? '#EF4444' : '#6B7280'}40`
+                  }}
+                ></div>
+              </div>
+
+              {/* Stats - Ahora dinámicos */}
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-center">
+                  <div className="system-text text-lg font-bold text-neonSystem">
+                    {dungeon.progress}%
+                  </div>
+                  <div className="system-text text-xs text-neonSystem/60">
+                    Progreso
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Quick Actions */}
-          <section className="mb-12">
-            <div className="epic-card p-8 bg-gradient-to-r from-levelUp/10 to-brightPurple/10 border-2 border-levelUp/30">
-              <div className="text-center">
-                <h3 className="epic-title text-2xl mb-4 text-levelUp">ACCIONES RÁPIDAS</h3>
-                <p className="system-text text-base text-neonSystem/80 mb-6 max-w-2xl mx-auto">
-                  ¿No tienes tiempo para un calabozo completo? Prueba estas opciones rápidas de entrenamiento.
-                </p>
-                
-                <div className="grid md:grid-cols-3 gap-4">
-                  <Link 
-                    href="/practica/rapida?area=matematicas&tipo=repaso"
-                    className="epic-card p-4 hover:scale-105 transition-transform bg-dungeon/50 border border-neonSystem/20 hover:border-neonSystem/40"
-                  >
-                    <div className="text-2xl mb-2">⚡</div>
-                    <div className="epic-title text-lg mb-2 text-neonSystem">REPASO RÁPIDO</div>
-                    <div className="system-text text-sm text-neonSystem/70">5 preguntas • 8 min</div>
-                  </Link>
-                  
-                  <Link 
-                    href="/practica/rapida?area=matematicas&tipo=desafio"
-                    className="epic-card p-4 hover:scale-105 transition-transform bg-dungeon/50 border border-neonSystem/20 hover:border-neonSystem/40"
-                  >
-                    <div className="text-2xl mb-2">🎯</div>
-                    <div className="epic-title text-lg mb-2 text-neonSystem">DESAFÍO DIARIO</div>
-                    <div className="system-text text-sm text-neonSystem/70">3 preguntas • 5 min</div>
-                  </Link>
-                  
-                  <Link 
-                    href="/practica/rapida?area=matematicas&tipo=examen"
-                    className="epic-card p-4 hover:scale-105 transition-transform bg-dungeon/50 border border-neonSystem/20 hover:border-neonSystem/40"
-                  >
-                    <div className="text-2xl mb-2">📊</div>
-                    <div className="epic-title text-lg mb-2 text-neonSystem">MINI EXAMEN</div>
-                    <div className="system-text text-sm text-neonSystem/70">10 preguntas • 15 min</div>
-                  </Link>
+                <div className="text-center">
+                  <div className="system-text text-lg font-bold text-neonGreen">
+                    {dungeon.accuracy || 0}%
+                  </div>
+                  <div className="system-text text-xs text-neonSystem/60">
+                    Precisión
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className={`system-text text-xs font-bold px-2 py-1 rounded ${getDifficultyColor(dungeon.difficulty)}`}>
+                    {getDifficultyStars(dungeon.difficulty)}
+                  </div>
+                  <div className="system-text text-xs text-neonSystem/60 mt-1">
+                    {dungeon.difficulty}
+                  </div>
                 </div>
               </div>
+
+              {/* Action Button */}
+              <Link 
+                href={`/prueba/matematicas/${dungeon.id}`}
+                className="btn-primary w-full py-3 text-lg font-bold rounded-lg epic-title tracking-wider"
+                style={{
+                  backgroundColor: `${dungeon.color.includes('blue') ? '#3B82F6' : 
+                                    dungeon.color.includes('green') ? '#10B981' :
+                                    dungeon.color.includes('purple') ? '#8B5CF6' :
+                                    dungeon.color.includes('orange') ? '#F97316' :
+                                    dungeon.color.includes('red') ? '#EF4444' : '#6B7280'}20`,
+                  borderColor: dungeon.color.includes('blue') ? '#3B82F6' : 
+                              dungeon.color.includes('green') ? '#10B981' :
+                              dungeon.color.includes('purple') ? '#8B5CF6' :
+                              dungeon.color.includes('orange') ? '#F97316' :
+                              dungeon.color.includes('red') ? '#EF4444' : '#6B7280',
+                  color: dungeon.color.includes('blue') ? '#3B82F6' : 
+                        dungeon.color.includes('green') ? '#10B981' :
+                        dungeon.color.includes('purple') ? '#8B5CF6' :
+                        dungeon.color.includes('orange') ? '#F97316' :
+                        dungeon.color.includes('red') ? '#EF4444' : '#6B7280'
+                }}
+              >
+                ENTRAR AL CALABOZO
+              </Link>
+
+              {/* Expanded Content */}
+              {selectedLevel === dungeon.id && (
+                <div className="mt-6 pt-6 border-t border-neonSystem/20">
+                  <p className="system-text text-sm text-neonSystem/70 mb-4">
+                    {dungeon.description}
+                  </p>
+                  
+                  {/* Topics */}
+                  <div className="mb-4">
+                    <div className="system-text text-xs text-neonSystem/60 mb-2">Temas incluidos:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {dungeon.topics.map((topic, index) => (
+                        <span key={index} className="system-text text-xs px-2 py-1 bg-neonSystem/20 rounded">
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div className="text-center">
+                      <div className="system-text text-neonSystem/60">Preguntas Respondidas</div>
+                      <div className="epic-title text-lg text-neonCyan">
+                        {dungeon.total_questions_answered || 0}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="system-text text-neonSystem/60">Respuestas Correctas</div>
+                      <div className="epic-title text-lg text-neonGreen">
+                        {dungeon.correct_answers || 0}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Boss Info */}
+                  <div className="text-center mb-4">
+                    <div className="system-text text-xs text-neonSystem/60 mb-1">👑 Jefe Final</div>
+                    <div className="epic-title text-sm text-levelUp">{dungeon.boss}</div>
+                  </div>
+
+                  {/* Meta Info */}
+                  <div className="flex justify-between text-xs text-neonSystem/60">
+                    <span>⏱️ {dungeon.duration}</span>
+                    <span>❓ {dungeon.questions} preguntas</span>
+                  </div>
+                </div>
+              )}
             </div>
-          </section>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link href="/prueba/completa" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">🏛️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Simulacro Completo</h3>
+            <p className="system-text text-sm text-neonSystem/70">Practica las 5 áreas como en el ICFES real</p>
+          </Link>
+          
+          <Link href="/battle" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">⚔️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Duelo Matemático</h3>
+            <p className="system-text text-sm text-neonSystem/70">Compite contra otros estudiantes</p>
+          </Link>
+          
+          <Link href="/learning-path" className="epic-card p-6 text-center group hover:scale-105 transition-all duration-300">
+            <div className="text-4xl mb-4">🗺️</div>
+            <h3 className="epic-title text-xl mb-2 text-neonSystem">Plan Personalizado</h3>
+            <p className="system-text text-sm text-neonSystem/70">Ruta de estudio adaptada a ti</p>
+          </Link>
         </div>
       </main>
-
-      <EpicNavigation />
     </div>
   )
 } 

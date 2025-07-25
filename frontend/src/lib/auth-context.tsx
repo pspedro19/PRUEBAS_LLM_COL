@@ -11,6 +11,7 @@ interface AssessmentInfo {
 interface User {
   id: string;
   email: string;
+  username: string;  // ✅ ADDED: Agregar username para compatibilidad
   full_name: string;
   role: string;
   is_active: boolean;
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Function to fetch user stats from Django backend
   const fetchUserStats = async (token: string): Promise<any> => {
     try {
-      // Use Next.js API route for Django backend
+      // ✅ FIXED: Use auth/stats que devuelve datos completos incluyendo assessments
       const response = await fetch('/api/auth/stats', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -53,7 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.ok) {
-        return await response.json();
+        const statsData = await response.json();
+        console.log('📦 AuthContext API Response:', statsData);
+        
+        // ✅ RETORNAR datos reales del backend, no hardcodeados
+        return statsData;
       }
     } catch (error) {
       console.error('Error fetching user stats:', error);
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const user: User = {
           id: stats?.user_info?.id || 'temp_id',
           email: email,
+          username: stats?.user_info?.username || email.split('@')[0], // ✅ ADDED: Extraer username
           full_name: email.split('@')[0],
           role: stats?.assessments?.assigned_role || 'user',
           is_active: true,
@@ -151,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user: User = {
         id: data.user?.id || stats?.user_info?.id || 'temp_id',
         email: email,
+        username: data.user?.username || email.split('@')[0], // ✅ ADDED: Extraer username
         full_name: data.user?.first_name && data.user?.last_name 
           ? `${data.user.first_name} ${data.user.last_name}` 
           : data.user?.username || email.split('@')[0],
@@ -232,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user: User = {
         id: data.user?.id || stats?.user_info?.id || 'temp_id',
         email: email,
+        username: username, // ✅ ADDED: Usar el username del parámetro
         full_name: first_name && last_name ? `${first_name} ${last_name}` : username,
         role: stats?.assessments?.assigned_role || 'user',
         is_active: true,

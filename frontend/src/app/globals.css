@@ -305,9 +305,9 @@
   
   /* Epic Text Effects */
   .epic-title {
-    font-family: 'Cinzel', 'UnifrakturMaguntia', serif;
-    font-weight: 900;
-    letter-spacing: 0.1em;
+    font-family: 'Inter', 'Poppins', sans-serif; /* ✅ CHANGED: Fuente legible en lugar de Cinzel */
+    font-weight: 600; /* ✅ CHANGED: Peso más legible */
+    letter-spacing: 0.02em; /* ✅ CHANGED: Espaciado más legible */
     text-transform: uppercase;
     background: linear-gradient(45deg, #FFD700, #FFA500, #FF8800);
     -webkit-background-clip: text;
@@ -328,9 +328,9 @@
   }
 
   .display-text {
-    font-family: 'Orbitron', 'Rajdhani', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-family: 'Inter', 'Poppins', sans-serif; /* ✅ CHANGED: Fuente legible en lugar de Orbitron */
+    font-weight: 500; /* ✅ CHANGED: Peso más legible */
+    letter-spacing: 0.02em; /* ✅ CHANGED: Espaciado más legible */
   }
   
   .glitch-text {

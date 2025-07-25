@@ -72,7 +72,8 @@ export default function RoleSelectionPage() {
     try {
       const token = localStorage.getItem('access_token')
       if (token) {
-        const response = await fetch('http://mathquest-backend:8000/api/auth/complete-assessment/', {
+        // ✅ FIXED: Usar API route del frontend en lugar de llamada directa al backend
+        const response = await fetch('/api/auth/complete-assessment', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

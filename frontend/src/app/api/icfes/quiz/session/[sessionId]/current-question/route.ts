@@ -16,8 +16,9 @@ export async function GET(
     }
 
     // Forward to backend - Use internal Docker networking
-    const backendUrl = 'http://backend:8000';
-    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/current-question`, {
+    const backendUrl = 'http://mathquest-backend:8000';
+    // ✅ FIXED: Agregar trailing slash
+    const response = await fetch(`${backendUrl}/api/icfes/quiz/session/${sessionId}/current-question/`, {
       method: 'GET',
       headers: {
         'Authorization': authHeader,

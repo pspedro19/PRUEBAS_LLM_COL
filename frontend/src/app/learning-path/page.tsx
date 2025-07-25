@@ -40,13 +40,23 @@ export default function LearningPathPage() {
   const planType = searchParams.get('type') || 'default'
 
   useEffect(() => {
-    if (user) {
-      fetchLearningPath()
-      fetchUserMetrics()
+    console.log('🔍 Learning Path - useEffect triggered')
+    console.log('👤 User from context:', user)
+    console.log('🔐 User authenticated:', !!user)
+    
+    if (!user) {
+      console.log('❌ No user in context, redirecting to login')
+      router.push('/auth/login')
+      return
+    }
+    
+    if (user && planType) {
+      console.log('✅ User and planType available, fetching learning path')
+      fetchLearningPath(planType)
     }
   }, [user, planType])
 
-  const fetchLearningPath = async () => {
+  const fetchLearningPath = async (planType: string = 'default') => {
     try {
       setLoading(true)
       setError(null)
@@ -54,27 +64,36 @@ export default function LearningPathPage() {
       const token = localStorage.getItem('access_token')
       console.log('🔍 Fetching learning path with type:', planType)
       console.log('🔑 Token available:', !!token)
+      console.log('🔑 Token value:', token ? `${token.substring(0, 20)}...` : 'null')
+      console.log('🔑 Token length:', token ? token.length : 0)
+      
+      if (!token) {
+        console.error('❌ No access token found in localStorage')
+        setError('No estás autenticado. Por favor, inicia sesión.')
+        return
+      }
       
       const url = `/api/learning/path${planType !== 'default' ? `?type=${planType}` : ''}`
       console.log('📡 Fetching from URL:', url)
       
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+      console.log('📤 Request headers:', headers)
+      
+      const response = await fetch(url, { headers })
       
       console.log('📡 Response status:', response.status)
       console.log('📡 Response ok:', response.ok)
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         console.error('❌ HTTP Error:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
-      const data = await response.json()
+        const data = await response.json()
       console.log('📦 Response data:', data)
       
       // Guardar info de debug
@@ -93,7 +112,7 @@ export default function LearningPathPage() {
         // Encontrar la primera unidad no completada
         if (data.activePath.units) {
           const currentUnit = data.activePath.units.findIndex(
-            (unit: Unit) => unit.progress < 100
+            (unit: Unit) => !unit.lessons || unit.lessons.some(lesson => !lesson.completed)
           )
           setSelectedUnit(currentUnit >= 0 ? currentUnit : 0)
         }
@@ -122,7 +141,7 @@ export default function LearningPathPage() {
           'Content-Type': 'application/json'
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setMetrics(data.metrics || data)
@@ -160,9 +179,9 @@ export default function LearningPathPage() {
   }
 
   if (error) {
-    return (
+  return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-8">
-        <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -192,16 +211,16 @@ export default function LearningPathPage() {
                 Hacer Diagnóstico
               </button>
               
-              <button
+                <button
                 onClick={() => router.push('/')}
                 className="bg-gray-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all"
               >
                 Volver al Inicio
-              </button>
+                </button>
             </div>
           </motion.div>
-        </div>
-      </div>
+          </div>
+                </div>
     )
   }
 
@@ -241,9 +260,9 @@ export default function LearningPathPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Botones de acción */}
-            <div className="space-y-4">
+              <div className="space-y-4">
               <button
                 onClick={() => router.push('/learning-path/select-template')}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all mr-4"
@@ -257,15 +276,15 @@ export default function LearningPathPage() {
               >
                 📊 Hacer Diagnóstico Primero
               </button>
-            </div>
+                        </div>
             
             {/* Texto informativo */}
             <div className="mt-8 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-700">
                 💡 <strong>Tip:</strong> Si ya completaste un quiz, puedes elegir directamente un plan personalizado. 
                 Si es tu primera vez, te recomendamos hacer el diagnóstico primero.
-              </p>
-            </div>
+                        </p>
+                      </div>
           </motion.div>
         </div>
       </div>
@@ -284,18 +303,18 @@ export default function LearningPathPage() {
               <p className="text-sm text-purple-200 mt-1">
                 {getPlanTypeTitle(planType)}
               </p>
-            </div>
-            
+                    </div>
+
             <div className="flex items-center space-x-6">
               {/* Racha diaria */}
               <DailyStreak streak={streak} />
               
               {/* Progreso general */}
               <div className="text-center">
-                <div className="text-3xl font-bold">{activePath.progress}%</div>
+                <div className="text-3xl font-bold">{activePath.progress?.completion_percentage || 0}%</div>
                 <div className="text-sm text-purple-100">Completado</div>
               </div>
-              
+
               {/* XP Total */}
               <div className="text-center">
                 <div className="text-3xl font-bold flex items-center">
@@ -304,10 +323,10 @@ export default function LearningPathPage() {
                 </div>
                 <div className="text-sm text-purple-100">XP Total</div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                              </div>
+                            </div>
+                      </div>
+                    </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-12 gap-8">
@@ -326,12 +345,12 @@ export default function LearningPathPage() {
                 Áreas de Enfoque
               </h3>
               <div className="space-y-2">
-                {activePath.targetAreas?.map((area) => (
+                {activePath.targetAreas?.map((area, index) => (
                   <div
-                    key={area}
+                    key={`area-${index}`}
                     className="px-3 py-2 bg-purple-50 rounded-lg text-sm font-medium text-purple-700"
                   >
-                    {area}
+                    {typeof area === 'string' ? area : JSON.stringify(area)}
                   </div>
                 )) || (
                   <div className="text-sm text-gray-500">
@@ -375,7 +394,7 @@ export default function LearningPathPage() {
           <div className="col-span-3">
             <MetricsDashboard
               metrics={metrics}
-              weeklyGoal={activePath.weeklyGoal}
+              weeklyGoal={activePath.weeklyGoal || 5}
             />
             
             {/* Siguiente objetivo */}
@@ -396,9 +415,9 @@ export default function LearningPathPage() {
                       style={{ width: `${activePath.units[selectedUnit]?.progress || 0}%` }}
                     />
                   </div>
-                </div>
-              </div>
-            )}
+            </div>
+          </div>
+        )}
             
             {/* Tips de estudio */}
             <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-6">
