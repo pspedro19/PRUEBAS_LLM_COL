@@ -717,7 +717,7 @@ def get_user_stats(request):
                 # Contar total de preguntas respondidas
                 cursor.execute("""
                     SELECT COUNT(*) 
-                    FROM icfes_userquestionresponse 
+                    FROM respuestas_usuarios_icfes 
                     WHERE user_id = %s
                 """, [user.id])
                 total_questions = cursor.fetchone()[0] or 0
@@ -725,8 +725,8 @@ def get_user_stats(request):
                 # Calcular precisión
                 cursor.execute("""
                     SELECT COUNT(*) 
-                    FROM icfes_userquestionresponse 
-                    WHERE user_id = %s AND is_correct = true
+                    FROM respuestas_usuarios_icfes 
+                    WHERE user_id = %s AND es_correcta = true
                 """, [user.id])
                 correct_answers = cursor.fetchone()[0] or 0
                 

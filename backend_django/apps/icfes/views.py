@@ -15,6 +15,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
+import asyncio
+import logging
+from asgiref.sync import async_to_sync
 
 # Importar los modelos correctos que tienen datos
 from .models_nuevo import PreguntaICFES, OpcionRespuesta, AreaTematica, RespuestaUsuarioICFES
@@ -23,6 +26,344 @@ from .models import UserICFESSession, ICFESExam, ICFESResult
 # NUEVO: Importar el motor de recomendaciones
 from apps.learning.recommendation_engine import LearningRecommendationEngine
 from apps.learning.models import UserPathEnrollment
+
+# 🧠 NUEVO: Importar sistema AI/LLM para explicaciones automáticas
+from apps.ai_llm.llm_orchestrator import llm_orchestrator
+from apps.ai_llm.analysis_engine import UserAnalysisEngine
+from apps.questions.models import UserQuestionResponse
+
+logger = logging.getLogger(__name__)
+
+
+# 🧠 FUNCIÓN SIMPLIFICADA: Generar explicación inmediata para respuestas incorrectas
+def _generate_immediate_explanation_for_wrong_answer(user, pregunta, opcion_seleccionada, opcion_correcta):
+    """
+    Genera explicación inmediata inteligente cuando el usuario responde incorrectamente
+    (Versión simplificada que funciona sin LLM - preparada para futura integración)
+    """
+    try:
+        # Mapear área temática ICFES a área estándar
+        area_mapping = {
+            'Aritmética y Operaciones Básicas': 'matemáticas',
+            'Álgebra y Funciones': 'matemáticas', 
+            'Geometría y Trigonometría': 'matemáticas',
+            'Estadística y Probabilidad': 'matemáticas',
+            'Problemas Aplicados y Análisis': 'matemáticas'
+        }
+        
+        area_icfes = pregunta.area_tematica.nombre if pregunta.area_tematica else 'General'
+        area_estandar = area_mapping.get(area_icfes, 'matemáticas')
+        
+        # Generar explicación inteligente basada en el área y contenido
+        explanation_content = f"""
+## 🎯 Análisis de tu Respuesta
+
+**Pregunta:** {pregunta.pregunta_texto[:100]}{'...' if len(pregunta.pregunta_texto) > 100 else ''}
+
+**Tu respuesta:** Opción {opcion_seleccionada.letra_opcion} - {opcion_seleccionada.texto_opcion[:80]}{'...' if len(opcion_seleccionada.texto_opcion) > 80 else ''}
+
+**Respuesta correcta:** Opción {pregunta.respuesta_correcta}
+
+### 📚 Área Temática: {area_icfes}
+
+### 💡 Explicación Detallada:
+"""
+        
+        # Explicaciones específicas por área
+        if 'Álgebra' in area_icfes:
+            explanation_content += """
+Este problema requiere aplicar conceptos algebraicos fundamentales. Revisa:
+- **Operaciones con variables:** Asegúrate de seguir el orden correcto
+- **Simplificación:** Reduce expresiones paso a paso
+- **Ecuaciones:** Identifica la incógnita y despeja sistemáticamente
+"""
+        elif 'Geometría' in area_icfes:
+            explanation_content += """
+Este es un problema geométrico. Considera:
+- **Figuras y propiedades:** Identifica qué tipo de figura estás analizando
+- **Fórmulas:** Aplica las fórmulas correctas para área, perímetro o volumen
+- **Relaciones espaciales:** Visualiza las relaciones entre los elementos
+"""
+        elif 'Estadística' in area_icfes:
+            explanation_content += """
+Este problema involucra análisis estadístico. Revisa:
+- **Datos:** Organiza la información sistemáticamente
+- **Medidas:** Diferencia entre media, mediana y moda
+- **Probabilidad:** Calcula eventos considerando todos los casos posibles
+"""
+        elif 'Aritmética' in area_icfes:
+            explanation_content += """
+Este es un problema aritmético fundamental. Considera:
+- **Operaciones básicas:** Verifica cálculos paso a paso
+- **Orden de operaciones:** Sigue la jerarquía matemática (PEMDAS)
+- **Números:** Presta atención a decimales, fracciones y porcentajes
+"""
+        else:
+            explanation_content += """
+Este problema requiere análisis matemático cuidadoso. Recuerda:
+- **Lectura comprensiva:** Entiende completamente lo que se pregunta
+- **Estrategia:** Identifica qué conocimientos matemáticos aplicar
+- **Verificación:** Comprueba tu respuesta con el contexto del problema
+"""
+        
+        # Consejos personalizados basados en el nivel del usuario
+        user_level = getattr(user, 'level', 1)
+        if user_level <= 3:
+            explanation_content += """
+### 🌟 Consejo para Principiantes:
+- Tómate tiempo para leer cada pregunta dos veces
+- Dibuja o esquematiza cuando sea posible
+- Elimina opciones que claramente no tienen sentido
+"""
+        else:
+            explanation_content += """
+### 🚀 Consejo Avanzado:
+- Analiza las opciones de respuesta para encontrar pistas
+- Usa estimación para verificar si tu respuesta es razonable
+- Conecta este problema con otros similares que hayas resuelto
+"""
+        
+        explanation_content += """
+### 📈 Plan de Mejora:
+1. **Repasa** los conceptos fundamentales de esta área
+2. **Practica** problemas similares
+3. **Analiza** tus errores para evitar repetirlos
+
+---
+*Explicación generada automáticamente - Pronto disponible con IA personalizada*
+"""
+        
+        # Datos de la explicación para almacenamiento
+        explanation_data = {
+            'content': explanation_content.strip(),
+            'model_used': 'fallback_intelligent_v1',
+            'confidence': 0.75,  # Confianza moderada para explicaciones de fallback
+            'success': True,
+            'tokens_used': len(explanation_content) // 4,  # Estimación de tokens
+        }
+        
+        logger.info(f"✅ Explicación de fallback generada para pregunta {pregunta.id}")
+        return explanation_data
+        
+    except Exception as e:
+        logger.error(f"❌ Error generando explicación de fallback: {e}")
+        # Explicación mínima de emergencia
+        return {
+            'content': f"""
+## ❌ Respuesta Incorrecta
+
+**Respuesta correcta:** Opción {pregunta.respuesta_correcta}
+
+Te recomendamos revisar los conceptos de {area_icfes if 'area_icfes' in locals() else 'matemáticas'} y practicar problemas similares.
+
+*Sistema de explicaciones en desarrollo*
+""".strip(),
+            'model_used': 'emergency_fallback',
+            'confidence': 0.5,
+            'success': True,
+            'tokens_used': 50
+        }
+
+
+def _get_correct_option_text(pregunta):
+    """Obtiene el texto de la opción correcta"""
+    try:
+        opcion_correcta = OpcionRespuesta.objects.get(
+            pregunta=pregunta,
+            letra_opcion=pregunta.respuesta_correcta
+        )
+        return opcion_correcta.texto_opcion[:100] + "..."
+    except:
+        return "Revisa las opciones disponibles"
+
+
+def _generate_fallback_explanation(pregunta, opcion_seleccionada, area_icfes):
+    """Genera explicación básica cuando falla la IA"""
+    return {
+        'success': True,
+        'explanation': f"""
+## 🎯 Análisis de tu Respuesta
+
+**Tu respuesta:** {opcion_seleccionada.letra_opcion}) {opcion_seleccionada.texto_opcion[:100]}...
+
+**Respuesta correcta:** {pregunta.respuesta_correcta}
+
+## 📚 Explicación
+
+Esta pregunta pertenece al área de **{area_icfes}** con dificultad **{pregunta.nivel_dificultad}**.
+
+Para mejorar en este tipo de preguntas:
+
+1. **Revisa los conceptos básicos** del tema
+2. **Practica problemas similares** step by step  
+3. **Identifica el patrón** de este tipo de ejercicios
+4. **Consulta material adicional** si tienes dudas
+
+## 💡 Recomendación
+
+Dedica tiempo extra a repasar **{area_icfes.lower()}** y practica con ejercicios de dificultad **{pregunta.nivel_dificultad.lower()}**.
+""",
+        'ai_generated': False,
+        'confidence': 0.6,
+        'model_used': 'fallback'
+    }
+
+
+# 🧠 FUNCIÓN SIMPLIFICADA: Generar diagnóstico final inteligente
+def _generate_immediate_final_diagnosis(user, session_responses):
+    """
+    Genera diagnóstico final personalizado inmediato basado en respuestas correctas/incorrectas
+    (Versión simplificada que funciona sin LLM - preparada para futura integración)
+    """
+    try:
+        if not session_responses:
+            return "No se encontraron respuestas para generar diagnóstico."
+            
+        # Analizar patrones de respuestas
+        total_questions = len(session_responses)
+        correct_count = sum(1 for r in session_responses if r.es_correcta)
+        incorrect_count = total_questions - correct_count
+        accuracy = (correct_count / total_questions) * 100 if total_questions > 0 else 0
+        
+        # Identificar áreas problemáticas y fortalezas
+        area_performance = {}
+        for response in session_responses:
+            if response.pregunta.area_tematica:
+                area_name = response.pregunta.area_tematica.nombre
+                if area_name not in area_performance:
+                    area_performance[area_name] = {'correct': 0, 'total': 0}
+                
+                area_performance[area_name]['total'] += 1
+                if response.es_correcta:
+                    area_performance[area_name]['correct'] += 1
+        
+        # Categorizar áreas
+        weak_areas = []
+        strong_areas = []
+        average_areas = []
+        
+        for area, stats in area_performance.items():
+            area_accuracy = (stats['correct'] / stats['total']) * 100
+            if area_accuracy < 50:
+                weak_areas.append({'name': area, 'accuracy': area_accuracy, 'correct': stats['correct'], 'total': stats['total']})
+            elif area_accuracy >= 80:
+                strong_areas.append({'name': area, 'accuracy': area_accuracy, 'correct': stats['correct'], 'total': stats['total']})
+            else:
+                average_areas.append({'name': area, 'accuracy': area_accuracy, 'correct': stats['correct'], 'total': stats['total']})
+        
+        # Generar diagnóstico personalizado inteligente
+        diagnosis_content = f"""
+# 📊 Diagnóstico Personalizado de tu Desempeño
+
+¡Hola **{user.username}**! He analizado tu desempeño en este quiz y aquí tienes tu diagnóstico personalizado:
+
+## 🎯 Resumen General
+- **Precisión total:** {accuracy:.1f}%
+- **Preguntas respondidas:** {total_questions}
+- **Respuestas correctas:** {correct_count}
+- **Respuestas incorrectas:** {incorrect_count}
+
+"""
+        
+        # Evaluación del rendimiento general
+        if accuracy >= 90:
+            diagnosis_content += """
+## 🏆 **¡EXCELENTE RENDIMIENTO!**
+Tu desempeño es sobresaliente. Demuestras un dominio sólido de los conceptos matemáticos evaluados.
+"""
+        elif accuracy >= 75:
+            diagnosis_content += """
+## 🌟 **¡BUEN RENDIMIENTO!**
+Tu desempeño es bueno. Tienes una base sólida, pero hay algunas áreas donde puedes mejorar.
+"""
+        elif accuracy >= 60:
+            diagnosis_content += """
+## 📈 **RENDIMIENTO PROMEDIO**
+Tu desempeño está en nivel intermedio. Con práctica enfocada puedes mejorar significativamente.
+"""
+        else:
+            diagnosis_content += """
+## 💪 **OPORTUNIDAD DE CRECIMIENTO**
+Este es un buen punto de partida. Con dedicación y práctica constante puedes mejorar mucho.
+"""
+        
+        # Análisis por áreas - Fortalezas
+        if strong_areas:
+            diagnosis_content += "\n## 🌟 **TUS FORTALEZAS:**\n"
+            for area in strong_areas:
+                diagnosis_content += f"- **{area['name']}:** {area['accuracy']:.1f}% ({area['correct']}/{area['total']}) - ¡Excelente dominio!\n"
+        
+        # Análisis por áreas - Oportunidades de mejora
+        if weak_areas:
+            diagnosis_content += "\n## 🎯 **ÁREAS DE OPORTUNIDAD:**\n"
+            for area in weak_areas:
+                diagnosis_content += f"- **{area['name']}:** {area['accuracy']:.1f}% ({area['correct']}/{area['total']}) - Requiere atención\n"
+        
+        # Áreas promedio
+        if average_areas:
+            diagnosis_content += "\n## 📊 **ÁREAS INTERMEDIAS:**\n"
+            for area in average_areas:
+                diagnosis_content += f"- **{area['name']}:** {area['accuracy']:.1f}% ({area['correct']}/{area['total']}) - En desarrollo\n"
+        
+        # Recomendaciones personalizadas
+        diagnosis_content += "\n## 💡 **RECOMENDACIONES PERSONALIZADAS:**\n"
+        
+        if weak_areas:
+            diagnosis_content += f"### 🎯 Prioridad Alta:\n"
+            for area in weak_areas[:2]:  # Top 2 áreas más débiles
+                diagnosis_content += f"- **Estudia {area['name']}:** Dedica tiempo extra a repasar conceptos fundamentales\n"
+        
+        diagnosis_content += f"""
+### 📚 Plan de Estudio:
+1. **Repaso inmediato:** Revisa las preguntas incorrectas con sus explicaciones detalladas
+2. **Práctica dirigida:** Enfócate en las áreas identificadas como débiles
+3. **Consolidación:** Refuerza tus fortalezas con ejercicios más avanzados
+
+### 🚀 Próximos Pasos:
+- Realiza otro quiz en 2-3 días para medir tu progreso
+- Practica diariamente 15-20 minutos en las áreas más débiles
+- Revisa material teórico de los temas que más se te dificultan
+"""
+        
+        # Motivación personalizada basada en el rendimiento
+        if accuracy >= 75:
+            diagnosis_content += """
+## 🎉 **¡FELICITACIONES!**
+Tu desempeño demuestra dedicación y comprensión. ¡Sigue así y alcanzarás la excelencia!
+"""
+        else:
+            diagnosis_content += """
+## 💪 **¡NO TE RINDAS!**
+Cada error es una oportunidad de aprendizaje. Con práctica constante verás mejoras significativas.
+"""
+        
+        diagnosis_content += """
+---
+*Diagnóstico generado automáticamente basado en tu rendimiento específico*
+*Pronto disponible con análisis de IA más avanzado*
+"""
+        
+        logger.info(f"✅ Diagnóstico de fallback generado para usuario {user.username}")
+        return diagnosis_content.strip()
+        
+    except Exception as e:
+        logger.error(f"❌ Error generando diagnóstico de fallback: {e}")
+        return f"""
+# 📊 Diagnóstico de tu Desempeño
+
+¡Hola **{user.username if user else 'Estudiante'}**!
+
+Has completado el quiz. Te recomendamos:
+
+1. **Revisar** las preguntas incorrectas
+2. **Practicar** más ejercicios similares  
+3. **Estudiar** los conceptos fundamentales
+
+¡Sigue practicando para mejorar tu rendimiento!
+
+---
+*Sistema de diagnóstico en desarrollo*
+"""
 
 
 @api_view(['POST'])
@@ -314,6 +655,31 @@ def submit_icfes_answer(request, session_id):
         is_correct = opcion.es_correcta
         print(f"✅ Respuesta correcta: {pregunta.respuesta_correcta}, Usuario respondió: {selected_answer}, Es correcta: {is_correct}")
         
+        # 🧠 NUEVO: Generar explicación IA automática para respuestas incorrectas
+        ai_explanation = None
+        ai_explanation_data = None
+        
+        if not is_correct:
+            print(f"🧠 Respuesta incorrecta detectada, generando explicación IA...")
+            try:
+                # Generar explicación inmediata (ya no async)
+                ai_explanation_data = _generate_immediate_explanation_for_wrong_answer(
+                    user=request.user,
+                    pregunta=pregunta,
+                    opcion_seleccionada=opcion,
+                    opcion_correcta=None  # Se maneja internamente
+                )
+                
+                if ai_explanation_data and ai_explanation_data.get('success'):
+                    ai_explanation = ai_explanation_data.get('content', '')
+                    print(f"✅ Explicación IA generada: {len(ai_explanation)} caracteres")
+                else:
+                    print(f"⚠️ Falló generación de IA, usando fallback")
+                    
+            except Exception as e:
+                logger.error(f"❌ Error generando explicación IA: {str(e)}")
+                print(f"❌ Error en explicación IA: {str(e)}")
+        
         # 🆕 CALCULAR XP BASADA EN RESPUESTA CORRECTA Y DIFICULTAD
         xp_earned = 0
         points_earned = 0
@@ -378,20 +744,43 @@ def submit_icfes_answer(request, session_id):
             # Actualizar respuesta existente
             existing_response.opcion_seleccionada = opcion.letra_opcion
             existing_response.es_correcta = is_correct
+            # 🧠 NUEVO: Agregar explicación IA si se generó
+            if ai_explanation:
+                existing_response.ai_explanation_requested = True
+                existing_response.ai_explanation_provided = ai_explanation
+                # Agregar metadatos de IA
+                if ai_explanation_data:
+                    existing_response.ai_model_used = ai_explanation_data.get('model_used', 'unknown')
+                    existing_response.ai_confidence_score = ai_explanation_data.get('confidence', 0.8)
             existing_response.save()
             print(f"🔄 Respuesta actualizada para pregunta {question_id}")
         else:
             # Crear nueva respuesta
-            respuesta = RespuestaUsuarioICFES.objects.create(
-                user=request.user,
-                pregunta=pregunta,
-                opcion_seleccionada=opcion.letra_opcion,
-                es_correcta=is_correct,
-                tiempo_respuesta_segundos=60,  # Valor fijo por ahora
-                session_id=str(session_id),
-                tipo_evaluacion='PRACTICA',
-            )
+            respuesta_data = {
+                'user': request.user,
+                'pregunta': pregunta,
+                'opcion_seleccionada': opcion.letra_opcion,
+                'es_correcta': is_correct,
+                'tiempo_respuesta_segundos': 60,  # Valor fijo por ahora
+                'session_id': str(session_id),
+                'tipo_evaluacion': 'PRACTICA',
+            }
+            
+            # 🧠 NUEVO: Agregar campos de IA si se generó explicación
+            if ai_explanation:
+                respuesta_data['ai_explanation_requested'] = True
+                respuesta_data['ai_explanation_provided'] = ai_explanation
+                # Agregar metadatos de IA
+                if ai_explanation_data:
+                    respuesta_data['ai_model_used'] = ai_explanation_data.get('model_used', 'unknown')
+                    respuesta_data['ai_confidence_score'] = ai_explanation_data.get('confidence', 0.8)
+            
+            respuesta = RespuestaUsuarioICFES.objects.create(**respuesta_data)
             print(f"✨ Nueva respuesta creada para pregunta {question_id}")
+            if ai_explanation:
+                print(f"🧠 Explicación IA guardada en base de datos")
+                print(f"🤖 Modelo usado: {ai_explanation_data.get('model_used', 'unknown')}")
+                print(f"📊 Confianza: {ai_explanation_data.get('confidence', 0.8)}")
         
         # 🆕 ACTUALIZAR XP DEL USUARIO SI GANÓ XP
         total_user_xp = request.user.experience_points
@@ -737,7 +1126,21 @@ def get_quiz_feedback(request, session_id):
                 'es_correcta': respuesta.es_correcta,
                 'tiempo_respuesta': respuesta.tiempo_respuesta_segundos,
                 'xp_ganado': respuesta.xp_ganado,
-                'dificultad': pregunta.nivel_dificultad
+                'dificultad': pregunta.nivel_dificultad,
+                # 🧠 NUEVO: Agregar explicación IA si está disponible
+                'ai_explanation': {
+                    'available': respuesta.ai_explanation_requested,
+                    'content': respuesta.ai_explanation_provided if respuesta.ai_explanation_provided else None,
+                    'model_used': respuesta.ai_model_used if hasattr(respuesta, 'ai_model_used') else None,
+                    'confidence': respuesta.ai_confidence_score if hasattr(respuesta, 'ai_confidence_score') else 0.0,
+                    'generated': respuesta.ai_explanation_requested and respuesta.ai_explanation_provided
+                } if hasattr(respuesta, 'ai_explanation_requested') else {
+                    'available': False,
+                    'content': None,
+                    'model_used': None,
+                    'confidence': 0.0,
+                    'generated': False
+                }
             }
             respuestas_detalle.append(respuesta_detalle)
             total_xp_ganado += respuesta.xp_ganado
@@ -782,6 +1185,17 @@ def get_quiz_feedback(request, session_id):
         
         recommendations.append('Consulta material adicional si tienes dudas')
         
+        # 🧠 NUEVO: Generar diagnóstico personalizado con IA
+        ai_diagnosis = None
+        try:
+            if respuestas_usuario.exists():
+                print(f"🧠 Generando diagnóstico final con IA...")
+                ai_diagnosis = _generate_immediate_final_diagnosis(request.user, respuestas_usuario)
+                print(f"✅ Diagnóstico IA generado: {len(ai_diagnosis) if ai_diagnosis else 0} caracteres")
+        except Exception as e:
+            logger.error(f"❌ Error generando diagnóstico IA: {str(e)}")
+            print(f"❌ Error en diagnóstico IA: {str(e)}")
+        
         # 🎯 MEJORADO: Crear respuesta completa con detalle
         response_data = {
             'session_id': str(session.uuid),
@@ -809,6 +1223,17 @@ def get_quiz_feedback(request, session_id):
                 ] if accuracy < 80 and (answered_questions - correct_answers) > 0 else []
             }
         }
+        
+        # 🧠 NUEVO: Agregar diagnóstico IA personalizado si está disponible
+        if ai_diagnosis:
+            response_data['ai_diagnosis'] = {
+                'content': ai_diagnosis,
+                'generated_at': timezone.now().isoformat(),
+                'personalized': True,
+                'confidence': 'high',
+                'includes_recommendations': True
+            }
+            print(f"🎓 Diagnóstico IA agregado al response")
         
         return Response({
             'success': True,

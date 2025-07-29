@@ -562,6 +562,12 @@ class RespuestaUsuarioICFES(models.Model):
     cambio_respuesta = models.BooleanField(default=False)
     patron_respuesta = models.JSONField(default=dict, blank=True)
     
+    # 🧠 NUEVO: Campos para integración con IA
+    ai_explanation_requested = models.BooleanField(default=False, help_text="Si se solicitó explicación con IA")
+    ai_explanation_provided = models.TextField(blank=True, null=True, help_text="Explicación generada por IA")
+    ai_model_used = models.CharField(max_length=100, blank=True, null=True, help_text="Modelo de IA utilizado")
+    ai_confidence_score = models.FloatField(default=0.0, help_text="Puntuación de confianza de la IA")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

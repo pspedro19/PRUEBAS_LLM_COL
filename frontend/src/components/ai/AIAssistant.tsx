@@ -99,7 +99,7 @@ export default function AIAssistant({
         setRecommendations(data.recommendations)
         setRequiredTasks(data.required_tasks)
         
-        if (data.required_tasks.length > 0) {
+        if (data.required_tasks && data.required_tasks.length > 0) {
           setCurrentPhase('tasks')
         } else {
           setCurrentPhase('recommendations')

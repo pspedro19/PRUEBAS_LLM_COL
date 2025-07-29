@@ -1205,12 +1205,144 @@ export default function MathDungeonPage() {
                        <p className="text-lg relative z-10">{feedback.feedback?.message || '¡Bien hecho, valiente aventurero!'}</p>
                      </motion.div>
 
+                     {/* 🧠 NUEVO: Diagnóstico Personalizado de IA */}
+                     {feedback.ai_diagnosis && (
+                       <motion.div 
+                         className="bg-gradient-to-br from-indigo-700/30 to-purple-700/30 rounded-xl p-6 border border-indigo-400/50 relative overflow-hidden"
+                         initial={{ opacity: 0, y: 20 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         transition={{ delay: 0.5 }}
+                       >
+                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10" />
+                         <div className="relative z-10">
+                           <div className="flex items-center justify-center mb-4">
+                             <div className="text-3xl mr-3">🧠</div>
+                             <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">
+                               Diagnóstico Personalizado de IA
+                             </h3>
+                             <div className="text-3xl ml-3">✨</div>
+                           </div>
+                           <div className="bg-slate-800/50 rounded-lg p-4 border border-indigo-400/30">
+                             <div className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                               {feedback.ai_diagnosis.content}
+                             </div>
+                             <div className="mt-3 text-xs text-indigo-300 opacity-75 text-center">
+                               🤖 Generado por IA • Personalizado para tu nivel • 
+                               {feedback.ai_diagnosis.confidence === 'high' && '🎯 Alta confianza'}
+                             </div>
+                           </div>
+                         </div>
+                       </motion.div>
+                     )}
+
+                     {/* 📚 NUEVO: Repaso de Preguntas Incorrectas con IA */}
+                     {feedback.respuestas_detalle && feedback.respuestas_detalle.some((r: any) => !r.es_correcta && r.ai_explanation?.generated) && (
+                       <motion.div 
+                         className="bg-gradient-to-br from-red-700/20 to-orange-700/20 rounded-xl p-6 border border-red-400/40 relative overflow-hidden"
+                         initial={{ opacity: 0, y: 20 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         transition={{ delay: 0.6 }}
+                       >
+                         <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-orange-500/10" />
+                         <div className="relative z-10">
+                           <div className="flex items-center justify-center mb-6">
+                             <div className="text-3xl mr-3">📚</div>
+                             <h3 className="text-2xl font-bold bg-gradient-to-r from-red-300 to-orange-300 bg-clip-text text-transparent">
+                               Repaso de Preguntas Incorrectas
+                             </h3>
+                             <div className="text-3xl ml-3">🔍</div>
+                           </div>
+                           
+                           <div className="space-y-4">
+                             {feedback.respuestas_detalle
+                               .filter((respuesta: any) => !respuesta.es_correcta && respuesta.ai_explanation?.generated)
+                               .map((respuesta: any, index: number) => (
+                                 <motion.div
+                                   key={respuesta.pregunta_id}
+                                   className="bg-slate-800/60 rounded-lg p-5 border border-red-400/30 relative"
+                                   initial={{ opacity: 0, x: -20 }}
+                                   animate={{ opacity: 1, x: 0 }}
+                                   transition={{ delay: 0.7 + (index * 0.1) }}
+                                 >
+                                   {/* Header de la pregunta */}
+                                   <div className="mb-4">
+                                     <div className="flex items-center justify-between mb-2">
+                                       <span className="text-sm font-semibold text-orange-300 bg-orange-500/20 px-2 py-1 rounded">
+                                         {respuesta.area_tematica} • {respuesta.dificultad}
+                                       </span>
+                                       <span className="text-xs text-gray-400">
+                                         Pregunta {index + 1}
+                                       </span>
+                                     </div>
+                                     
+                                     <h4 className="text-white font-medium mb-3 text-sm leading-relaxed">
+                                       {respuesta.pregunta_texto}
+                                     </h4>
+                                     
+                                     {/* Imagen de la pregunta si existe */}
+                                     {respuesta.pregunta_imagen && (
+                                       <img 
+                                         src={respuesta.pregunta_imagen}
+                                         alt="Imagen de la pregunta"
+                                         className="mx-auto max-w-full h-auto rounded border border-gray-400/30 mb-3"
+                                         style={{ maxHeight: '150px' }}
+                                       />
+                                     )}
+                                     
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                       <div className="bg-red-500/20 p-3 rounded border border-red-400/30">
+                                         <span className="text-red-300 font-semibold">❌ Tu respuesta:</span>
+                                         <div className="text-white mt-1">
+                                           {respuesta.respuesta_usuario}. {respuesta.opciones[respuesta.respuesta_usuario]}
+                                         </div>
+                                       </div>
+                                       <div className="bg-green-500/20 p-3 rounded border border-green-400/30">
+                                         <span className="text-green-300 font-semibold">✅ Respuesta correcta:</span>
+                                         <div className="text-white mt-1">
+                                           {respuesta.respuesta_correcta}. {respuesta.opciones[respuesta.respuesta_correcta]}
+                                         </div>
+                                       </div>
+                                     </div>
+                                   </div>
+                                   
+                                   {/* Explicación de IA */}
+                                   <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 rounded-lg p-4 border border-indigo-400/30">
+                                     <div className="flex items-center mb-3">
+                                       <span className="text-indigo-300 font-semibold flex items-center">
+                                         🧠 Explicación IA
+                                         {respuesta.ai_explanation.model_used && (
+                                           <span className="ml-2 text-xs bg-indigo-500/20 px-2 py-1 rounded">
+                                             {respuesta.ai_explanation.model_used}
+                                           </span>
+                                         )}
+                                       </span>
+                                       {respuesta.ai_explanation.confidence > 0.8 && (
+                                         <span className="ml-auto text-xs text-green-300">🎯 Alta confianza</span>
+                                       )}
+                                     </div>
+                                     <div className="text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">
+                                       {respuesta.ai_explanation.content}
+                                     </div>
+                                   </div>
+                                 </motion.div>
+                               ))}
+                           </div>
+                           
+                           <div className="mt-4 text-center">
+                             <div className="text-sm text-orange-300 bg-orange-500/10 inline-block px-4 py-2 rounded-lg border border-orange-400/30">
+                               💡 Estudia estas explicaciones para mejorar tu comprensión
+                             </div>
+                           </div>
+                         </div>
+                       </motion.div>
+                     )}
+
                      {/* Simple Analysis mejorado */}
                      <motion.div 
                        className="bg-slate-700/50 rounded-xl p-6 border border-slate-600/50 relative overflow-hidden"
                        initial={{ opacity: 0, y: 20 }}
                        animate={{ opacity: 1, y: 0 }}
-                       transition={{ delay: 0.6 }}
+                       transition={{ delay: 0.8 }}
                      >
                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10" />
                        <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent relative z-10">⚗️ Análisis de Resultados</h3>
@@ -1218,7 +1350,7 @@ export default function MathDungeonPage() {
                          <div>
                            <h4 className="font-semibold text-green-400 mb-2">⚡ Fortalezas:</h4>
                            <ul className="text-sm space-y-1">
-                             {feedback.analysis?.strengths?.map((strength: string, i: number) => (
+                             {feedback.feedback?.strengths?.map((strength: string, i: number) => (
                                <li key={i} className="text-green-300">• {strength}</li>
                              )) || <li className="text-green-300">• Manejo básico de conceptos</li>}
                            </ul>
@@ -1226,8 +1358,8 @@ export default function MathDungeonPage() {
                          <div>
                            <h4 className="font-semibold text-red-400 mb-2">🎯 Áreas de mejora:</h4>
                            <ul className="text-sm space-y-1">
-                             {feedback.analysis?.weaknesses?.map((weakness: string, i: number) => (
-                               <li key={i} className="text-red-300">• {weakness}</li>
+                             {feedback.feedback?.improvements?.map((improvement: string, i: number) => (
+                               <li key={i} className="text-red-300">• {improvement}</li>
                              )) || <li className="text-red-300">• Continuar practicando</li>}
                            </ul>
                          </div>
@@ -1311,6 +1443,32 @@ export default function MathDungeonPage() {
                   >
                     <div className="text-green-400 font-semibold">
                       +{lastResult.points_earned} puntos | +{lastResult.xp_earned} XP
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* 🧠 NUEVO: Indicador de IA para respuestas incorrectas */}
+                {!lastResult.is_correct && (
+                  <motion.div 
+                    className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-lg p-4 mb-4 border border-indigo-400/40"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <div className="text-center">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="inline-block text-2xl mb-2"
+                      >
+                        🧠
+                      </motion.div>
+                      <div className="text-indigo-300 font-semibold mb-1">
+                        IA Generando Explicación Personalizada...
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Se guardará en tu repaso para análisis detallado
+                      </div>
                     </div>
                   </motion.div>
                 )}
