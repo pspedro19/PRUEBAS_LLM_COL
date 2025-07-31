@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     start_quiz_session, get_current_question, 
     submit_icfes_answer, get_quiz_feedback,
-    get_user_areas_stats, get_dungeon_stats
+    get_user_areas_stats, get_dungeon_stats,
+    start_feedback_session, request_more_explanation, mark_question_understood
 )
 
 app_name = 'icfes'
@@ -24,4 +25,9 @@ urlpatterns = [
     # Estadísticas
     path('areas-stats/', get_user_areas_stats, name='get_user_areas_stats'),
     path('dungeon-stats/', get_dungeon_stats, name='get_dungeon_stats'),
+    
+    # Sistema de Feedback Progresivo
+    path('feedback/start/<uuid:session_id>/', start_feedback_session, name='start_feedback_session'),
+    path('feedback/<int:feedback_session_id>/question/<int:question_id>/more/', request_more_explanation, name='request_more_explanation'),
+    path('feedback/<int:feedback_session_id>/question/<int:question_id>/understood/', mark_question_understood, name='mark_question_understood'),
 ] 

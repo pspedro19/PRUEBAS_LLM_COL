@@ -592,4 +592,125 @@ class RespuestaUsuarioICFES(models.Model):
         
         if is_new:
             # Actualizar estadísticas de la pregunta
-            self.pregunta.actualizar_estadisticas(self.es_correcta, self.tiempo_respuesta_segundos) 
+            self.pregunta.actualizar_estadisticas(self.es_correcta, self.tiempo_respuesta_segundos)
+
+
+class FeedbackSession(models.Model):
+    """
+    Sesión de feedback progresivo para preguntas incorrectas
+    Permite al estudiante solicitar hasta 3 niveles de explicación
+    """
+    
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Activa'),
+        ('COMPLETED', 'Completada'),
+        ('ABANDONED', 'Abandonada'),
+    ]
+    
+    # Identificación
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='feedback_sessions')
+    quiz_session = models.ForeignKey('UserICFESSession', on_delete=models.CASCADE, related_name='feedback_sessions')
+    
+    # Configuración de la sesión
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    incorrect_questions = models.JSONField(default=list, help_text="Lista de IDs de preguntas incorrectas")
+    current_question_index = models.IntegerField(default=0, help_text="Índice de la pregunta actual en el feedback")
+    
+    # Timestamps
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'feedback_sessions'
+        ordering = ['-started_at']
+        verbose_name = 'Sesión de Feedback'
+        verbose_name_plural = 'Sesiones de Feedback'
+    
+    def __str__(self):
+        return f"Feedback {self.user.username} - {len(self.incorrect_questions)} preguntas"
+    
+    @property
+    def total_questions(self):
+        return len(self.incorrect_questions)
+    
+    @property
+    def current_question_id(self):
+        if self.current_question_index < len(self.incorrect_questions):
+            return self.incorrect_questions[self.current_question_index]
+        return None
+    
+    @property
+    def progress_percentage(self):
+        if self.total_questions == 0:
+            return 100
+        return (self.current_question_index / self.total_questions) * 100
+
+
+class ProgressiveFeedback(models.Model):
+    """
+    Feedback progresivo para una pregunta específica
+    Almacena hasta 3 niveles de explicación
+    """
+    
+    EXPLANATION_LEVELS = [
+        (1, 'Nivel 1 - Básico'),
+        (2, 'Nivel 2 - Intermedio'),
+        (3, 'Nivel 3 - Detallado'),
+    ]
+    
+    # Identificación
+    feedback_session = models.ForeignKey(FeedbackSession, on_delete=models.CASCADE, related_name='progressive_feedbacks')
+    question = models.ForeignKey(PreguntaICFES, on_delete=models.CASCADE, related_name='progressive_feedbacks')
+    user_response = models.ForeignKey(RespuestaUsuarioICFES, on_delete=models.CASCADE, related_name='progressive_feedbacks')
+    
+    # Control de progreso
+    current_level = models.IntegerField(default=1, choices=EXPLANATION_LEVELS)
+    max_level_reached = models.IntegerField(default=1)
+    student_understood = models.BooleanField(default=False)
+    
+    # Explicaciones por nivel
+    explanation_level_1 = models.TextField(blank=True, null=True, help_text="Explicación básica")
+    explanation_level_2 = models.TextField(blank=True, null=True, help_text="Explicación intermedia")
+    explanation_level_3 = models.TextField(blank=True, null=True, help_text="Explicación detallada")
+    
+    # Metadatos de generación
+    llm_model_used = models.CharField(max_length=100, blank=True, null=True)
+    generation_time_seconds = models.FloatField(default=0.0)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'progressive_feedback'
+        ordering = ['-created_at']
+        unique_together = ['feedback_session', 'question']
+        verbose_name = 'Feedback Progresivo'
+        verbose_name_plural = 'Feedbacks Progresivos'
+    
+    def __str__(self):
+        return f"Feedback P{self.question.id_pregunta_original} - Nivel {self.current_level}"
+    
+    def get_current_explanation(self):
+        """Retorna la explicación del nivel actual"""
+        if self.current_level == 1:
+            return self.explanation_level_1
+        elif self.current_level == 2:
+            return self.explanation_level_2
+        elif self.current_level == 3:
+            return self.explanation_level_3
+        return None
+    
+    def advance_level(self):
+        """Avanza al siguiente nivel de explicación"""
+        if self.current_level < 3:
+            self.current_level += 1
+            self.max_level_reached = max(self.max_level_reached, self.current_level)
+            self.save()
+            return True
+        return False
+    
+    def mark_understood(self):
+        """Marca que el estudiante entendió"""
+        self.student_understood = True
+        self.save() 

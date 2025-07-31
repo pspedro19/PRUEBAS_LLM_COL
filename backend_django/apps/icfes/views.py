@@ -20,7 +20,7 @@ import logging
 from asgiref.sync import async_to_sync
 
 # Importar los modelos correctos que tienen datos
-from .models_nuevo import PreguntaICFES, OpcionRespuesta, AreaTematica, RespuestaUsuarioICFES
+from .models_nuevo import PreguntaICFES, OpcionRespuesta, AreaTematica, RespuestaUsuarioICFES, FeedbackSession, ProgressiveFeedback
 from .models import UserICFESSession, ICFESExam, ICFESResult
 
 # NUEVO: Importar el motor de recomendaciones
@@ -1212,6 +1212,14 @@ def get_quiz_feedback(request, session_id):
             'xp_earned': total_xp_ganado,  # XP real calculado por dificultad
             'recommendations': recommendations,
             'respuestas_detalle': respuestas_detalle,  # ✨ NUEVO: Detalle completo
+            # 🔥 ARREGLO: Agregar final_results para el frontend
+            'final_results': {
+                'total_questions': total_questions,
+                'correct_answers': correct_answers,
+                'incorrect_answers': answered_questions - correct_answers,
+                'accuracy': round(accuracy, 1),
+                'score_percentage': round(accuracy, 1)
+            },
             'feedback': {
                 'message': performance_message,
                 'strengths': [
@@ -1223,6 +1231,9 @@ def get_quiz_feedback(request, session_id):
                 ] if accuracy < 80 and (answered_questions - correct_answers) > 0 else []
             }
         }
+        
+        # 🔍 DEBUG: Log para debugging del feedback progresivo
+        logger.info(f"🔍 FEEDBACK DATA - Session: {session_id}, Total: {total_questions}, Correct: {correct_answers}, Incorrect: {answered_questions - correct_answers}")
         
         # 🧠 NUEVO: Agregar diagnóstico IA personalizado si está disponible
         if ai_diagnosis:
@@ -1592,4 +1603,600 @@ def get_dungeon_stats(request):
         return Response({
             'success': False,
             'message': f'Error obteniendo estadísticas de calabozos: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ===============================================
+# 🧠 SISTEMA DE FEEDBACK PROGRESIVO
+# ===============================================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_feedback_session(request, session_id):
+    """
+    Inicia una sesión de feedback progresivo para preguntas incorrectas
+    """
+    logger.info(f"🔥 START_FEEDBACK_SESSION CALLED for session: {session_id} by user: {request.user}")
+    try:
+        # Obtener la sesión de quiz
+        quiz_session = UserICFESSession.objects.get(
+            uuid=session_id,
+            user=request.user,
+            status='COMPLETED'
+        )
+        
+        # Obtener preguntas incorrectas de esa sesión
+        incorrect_responses = RespuestaUsuarioICFES.objects.filter(
+            user=request.user,
+            session_id=str(session_id),
+            es_correcta=False
+        ).select_related('pregunta')
+        
+        if not incorrect_responses.exists():
+            return Response({
+                'success': False,
+                'message': 'No hay preguntas incorrectas en esta sesión'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Obtener IDs de preguntas incorrectas
+        incorrect_question_ids = list(incorrect_responses.values_list('pregunta_id', flat=True))
+        
+        # Verificar si ya existe una sesión de feedback activa
+        existing_session = FeedbackSession.objects.filter(
+            user=request.user,
+            quiz_session=quiz_session,
+            status='ACTIVE'
+        ).first()
+        
+        if existing_session:
+            # Usar sesión existente
+            feedback_session = existing_session
+        else:
+            # Crear nueva sesión de feedback
+            feedback_session = FeedbackSession.objects.create(
+                user=request.user,
+                quiz_session=quiz_session,
+                incorrect_questions=incorrect_question_ids,
+                status='ACTIVE'
+            )
+        
+        # Obtener la primera pregunta incorrecta
+        current_question_id = feedback_session.current_question_id
+        if not current_question_id:
+            return Response({
+                'success': False,
+                'message': 'No hay más preguntas para revisar'
+            })
+        
+        current_question = PreguntaICFES.objects.get(id=current_question_id)
+        user_response = incorrect_responses.filter(pregunta_id=current_question_id).first()
+        
+        # Crear o obtener progressive feedback para esta pregunta
+        progressive_feedback, created = ProgressiveFeedback.objects.get_or_create(
+            feedback_session=feedback_session,
+            question=current_question,
+            user_response=user_response,
+            defaults={'current_level': 1}
+        )
+        
+        # 🔥 ARREGLO: Asegurar que cada pregunta empiece en nivel 1
+        if not created and progressive_feedback.current_level != 1:
+            logger.warning(f"🔧 Reseteando progressive feedback inicial para pregunta {current_question.id} de nivel {progressive_feedback.current_level} a nivel 1")
+            progressive_feedback.current_level = 1
+            progressive_feedback.max_level_reached = 1
+            progressive_feedback.student_understood = False
+            progressive_feedback.save()
+        
+        logger.info(f"🔍 Progressive feedback inicial para pregunta {current_question.id}: Nivel={progressive_feedback.current_level}, Created={created}")
+        
+        # Generar explicación de nivel 1 si no existe
+        if not progressive_feedback.explanation_level_1:
+            explanation = _generate_progressive_explanation(
+                user_response, current_question, level=1
+            )
+            progressive_feedback.explanation_level_1 = explanation.get('content', '')
+            progressive_feedback.llm_model_used = explanation.get('model_used', 'fallback')
+            progressive_feedback.save()
+        
+        # Obtener opciones de la pregunta
+        opciones = OpcionRespuesta.objects.filter(pregunta=current_question).order_by('letra_opcion')
+        opciones_dict = {}
+        for opt in opciones:
+            opciones_dict[opt.letra_opcion] = {
+                'text': opt.texto_opcion,
+                'image_url': opt.imagen_opcion_url if opt.imagen_opcion_url else None,
+                'is_correct': opt.es_correcta
+            }
+        
+        return Response({
+            'success': True,
+            'data': {
+                'feedback_session_id': str(feedback_session.id),
+                'total_questions': feedback_session.total_questions,
+                'current_question_index': feedback_session.current_question_index + 1,
+                'progress_percentage': feedback_session.progress_percentage,
+                'question': {
+                    'id': current_question.id,
+                    'text': current_question.pregunta_texto,
+                    'image_url': current_question.imagen_pregunta_url,
+                    'options': opciones_dict,
+                    'area': current_question.area_tematica.nombre if current_question.area_tematica else 'General',
+                    'difficulty': current_question.nivel_dificultad,
+                },
+                'user_answer': user_response.opcion_seleccionada,
+                'correct_answer': current_question.respuesta_correcta,
+                'feedback': {
+                    'current_level': progressive_feedback.current_level,
+                    'max_level_reached': progressive_feedback.max_level_reached,
+                    'explanation': progressive_feedback.get_current_explanation(),
+                    'can_advance': progressive_feedback.current_level < 3,
+                    'student_understood': progressive_feedback.student_understood
+                }
+            }
+        })
+        
+    except UserICFESSession.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Sesión de quiz no encontrada'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error iniciando sesión de feedback: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def request_more_explanation(request, feedback_session_id, question_id):
+    """
+    Solicita más explicación para una pregunta (avanza al siguiente nivel)
+    """
+    logger.info(f"🔥 REQUEST_MORE_EXPLANATION called for feedback_session: {feedback_session_id}, question: {question_id}")
+    try:
+        feedback_session = FeedbackSession.objects.get(
+            id=feedback_session_id,
+            user=request.user,
+            status='ACTIVE'
+        )
+        
+        progressive_feedback = ProgressiveFeedback.objects.get(
+            feedback_session=feedback_session,
+            question_id=question_id
+        )
+        
+        logger.info(f"🔍 Current state - Level: {progressive_feedback.current_level}, Max reached: {progressive_feedback.max_level_reached}")
+        
+        # Verificar si puede avanzar
+        if progressive_feedback.current_level >= 3:
+            logger.warning(f"❌ Cannot advance - already at level {progressive_feedback.current_level}")
+            return Response({
+                'success': False,
+                'message': 'Ya has alcanzado el nivel máximo de explicación'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Avanzar al siguiente nivel
+        progressive_feedback.advance_level()
+        
+        logger.info(f"✅ Advanced to level {progressive_feedback.current_level}, Can still advance: {progressive_feedback.current_level < 3}")
+        
+        # Generar explicación del nuevo nivel si no existe
+        explanation_field = f'explanation_level_{progressive_feedback.current_level}'
+        current_explanation = getattr(progressive_feedback, explanation_field)
+        
+        if not current_explanation:
+            logger.info(f"🔄 Generating new explanation for level {progressive_feedback.current_level}")
+            explanation = _generate_progressive_explanation(
+                progressive_feedback.user_response, 
+                progressive_feedback.question, 
+                level=progressive_feedback.current_level
+            )
+            setattr(progressive_feedback, explanation_field, explanation.get('content', ''))
+            progressive_feedback.llm_model_used = explanation.get('model_used', 'fallback')
+            progressive_feedback.save()
+        else:
+            logger.info(f"📖 Using existing explanation for level {progressive_feedback.current_level}")
+        
+        response_data = {
+            'current_level': progressive_feedback.current_level,
+            'explanation': progressive_feedback.get_current_explanation(),
+            'can_advance': progressive_feedback.current_level < 3,
+            'max_level_reached': progressive_feedback.max_level_reached
+        }
+        
+        logger.info(f"📤 Sending response: Level={response_data['current_level']}, Can_advance={response_data['can_advance']}")
+        
+        return Response({
+            'success': True,
+            'data': response_data
+        })
+        
+    except (FeedbackSession.DoesNotExist, ProgressiveFeedback.DoesNotExist):
+        return Response({
+            'success': False,
+            'message': 'Sesión de feedback o pregunta no encontrada'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error solicitando más explicación: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_question_understood(request, feedback_session_id, question_id):
+    """
+    Marca una pregunta como entendida y avanza a la siguiente
+    """
+    try:
+        feedback_session = FeedbackSession.objects.get(
+            id=feedback_session_id,
+            user=request.user,
+            status='ACTIVE'
+        )
+        
+        progressive_feedback = ProgressiveFeedback.objects.get(
+            feedback_session=feedback_session,
+            question_id=question_id
+        )
+        
+        # Marcar como entendida
+        progressive_feedback.mark_understood()
+        
+        # Avanzar a la siguiente pregunta
+        feedback_session.current_question_index += 1
+        
+        # Verificar si completó todas las preguntas
+        if feedback_session.current_question_index >= feedback_session.total_questions:
+            feedback_session.status = 'COMPLETED'
+            feedback_session.completed_at = timezone.now()
+            feedback_session.save()
+            
+            return Response({
+                'success': True,
+                'data': {
+                    'session_completed': True,
+                    'message': '¡Felicitaciones! Has completado la revisión de todas tus preguntas incorrectas.',
+                    'total_questions_reviewed': feedback_session.total_questions
+                }
+            })
+        
+        feedback_session.save()
+        
+        # Obtener la siguiente pregunta
+        next_question_id = feedback_session.current_question_id
+        next_question = PreguntaICFES.objects.get(id=next_question_id)
+        
+        # Obtener la respuesta del usuario para esta pregunta
+        user_response = RespuestaUsuarioICFES.objects.get(
+            user=request.user,
+            session_id=str(feedback_session.quiz_session.uuid),
+            pregunta_id=next_question_id
+        )
+        
+        # Crear progressive feedback para la siguiente pregunta
+        next_progressive_feedback, created = ProgressiveFeedback.objects.get_or_create(
+            feedback_session=feedback_session,
+            question=next_question,
+            user_response=user_response,
+            defaults={'current_level': 1}
+        )
+        
+        # 🔥 ARREGLO: Asegurar que cada nueva pregunta empiece en nivel 1
+        if not created and next_progressive_feedback.current_level != 1:
+            logger.warning(f"🔧 Reseteando progressive feedback para pregunta {next_question.id} de nivel {next_progressive_feedback.current_level} a nivel 1")
+            next_progressive_feedback.current_level = 1
+            next_progressive_feedback.max_level_reached = 1
+            next_progressive_feedback.student_understood = False
+            next_progressive_feedback.save()
+        
+        logger.info(f"🔍 Progressive feedback para pregunta {next_question.id}: Nivel={next_progressive_feedback.current_level}, Created={created}")
+        
+        # Generar explicación de nivel 1 si no existe
+        if not next_progressive_feedback.explanation_level_1:
+            explanation = _generate_progressive_explanation(
+                user_response, next_question, level=1
+            )
+            next_progressive_feedback.explanation_level_1 = explanation.get('content', '')
+            next_progressive_feedback.llm_model_used = explanation.get('model_used', 'fallback')
+            next_progressive_feedback.save()
+        
+        # Obtener opciones de la siguiente pregunta
+        opciones = OpcionRespuesta.objects.filter(pregunta=next_question).order_by('letra_opcion')
+        opciones_dict = {}
+        for opt in opciones:
+            opciones_dict[opt.letra_opcion] = {
+                'text': opt.texto_opcion,
+                'image_url': opt.imagen_opcion_url if opt.imagen_opcion_url else None,
+                'is_correct': opt.es_correcta
+            }
+        
+        feedback_data = {
+            'current_level': next_progressive_feedback.current_level,
+            'max_level_reached': next_progressive_feedback.max_level_reached,
+            'explanation': next_progressive_feedback.get_current_explanation(),
+            'can_advance': next_progressive_feedback.current_level < 3,
+            'student_understood': next_progressive_feedback.student_understood
+        }
+        
+        logger.info(f"📤 Sending next question response: Question={next_question.id}, Level={feedback_data['current_level']}, Can_advance={feedback_data['can_advance']}")
+        
+        return Response({
+            'success': True,
+            'data': {
+                'session_completed': False,
+                'feedback_session_id': str(feedback_session.id),  # 🔥 ARREGLO: Incluir feedback_session_id
+                'current_question_index': feedback_session.current_question_index + 1,
+                'progress_percentage': feedback_session.progress_percentage,
+                'question': {
+                    'id': next_question.id,
+                    'text': next_question.pregunta_texto,
+                    'image_url': next_question.imagen_pregunta_url,
+                    'options': opciones_dict,
+                    'area': next_question.area_tematica.nombre if next_question.area_tematica else 'General',
+                    'difficulty': next_question.nivel_dificultad,
+                },
+                'user_answer': user_response.opcion_seleccionada,
+                'correct_answer': next_question.respuesta_correcta,
+                'feedback': feedback_data
+            }
+        })
+        
+    except (FeedbackSession.DoesNotExist, ProgressiveFeedback.DoesNotExist):
+        return Response({
+            'success': False,
+            'message': 'Sesión de feedback o pregunta no encontrada'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error marcando pregunta como entendida: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _generate_progressive_explanation(user_response, pregunta, level=1):
+    """
+    Genera explicación progresiva según el nivel solicitado
+    🔥 PREPARADO PARA LLM: Solo falta agregar la API key y activar
+    """
+    
+    # 🤖 INTEGRACION LLM: Descomentar cuando se configure la API key
+    # try:
+    #     from apps.ai_llm.llm_orchestrator import LLMOrchestrator
+    #     
+    #     orchestrator = LLMOrchestrator()
+    #     question_data = {
+    #         'id': pregunta.id,
+    #         'text': pregunta.pregunta_texto,
+    #         'area': pregunta.area_tematica.nombre if pregunta.area_tematica else 'General',
+    #         'difficulty': pregunta.nivel_dificultad,
+    #         'correct_answer': pregunta.respuesta_correcta,
+    #         'user_answer': user_response.opcion_seleccionada
+    #     }
+    #     
+    #     user_context = {
+    #         'user_id': user_response.user.id,
+    #         'level': getattr(user_response.user, 'level', 1),
+    #         'explanation_level': level
+    #     }
+    #     
+    #     # Generar explicación con LLM real
+    #     llm_result = asyncio.run(orchestrator.generate_explanation(
+    #         question_data=question_data,
+    #         user_context=user_context,
+    #         explanation_type=f'progressive_level_{level}'
+    #     ))
+    #     
+    #     if llm_result.get('success'):
+    #         return llm_result
+    # 
+    # except Exception as e:
+    #     logger.warning(f"LLM no disponible, usando fallback: {e}")
+    
+    # FALLBACK INTELIGENTE (actual)
+    try:
+        area_icfes = pregunta.area_tematica.nombre if pregunta.area_tematica else 'General'
+        
+        # Mapear área temática ICFES a área estándar
+        area_mapping = {
+            'Aritmética y Operaciones Básicas': 'matemáticas',
+            'Álgebra y Funciones': 'matemáticas', 
+            'Geometría y Trigonometría': 'matemáticas',
+            'Estadística y Probabilidad': 'matemáticas',
+            'Problemas Aplicados y Análisis': 'matemáticas'
+        }
+        
+        area_estandar = area_mapping.get(area_icfes, 'matemáticas')
+        
+        # Generar explicación según el nivel
+        if level == 1:
+            # Nivel 1: Explicación básica y directa
+            explanation_content = f"""
+## 🎯 ¿Por qué es incorrecta tu respuesta?
+
+**Tu respuesta:** Opción {user_response.opcion_seleccionada}
+**Respuesta correcta:** Opción {pregunta.respuesta_correcta}
+
+### 💡 Explicación rápida:
+Esta pregunta evalúa conceptos de **{area_icfes}**. Tu respuesta no es correcta porque no aplicaste correctamente el concepto principal que se está evaluando.
+
+### 🔍 Lo que debes revisar:
+- Identifica el concepto clave de la pregunta
+- Revisa la definición básica del tema
+- Practica problemas similares
+            """.strip()
+        
+        elif level == 2:
+            # Nivel 2: Explicación más detallada con pasos
+            explanation_content = f"""
+## 📚 Explicación Paso a Paso
+
+**Pregunta:** {pregunta.pregunta_texto[:150]}{'...' if len(pregunta.pregunta_texto) > 150 else ''}
+
+### 🔍 Análisis de tu error:
+Tu respuesta (Opción {user_response.opcion_seleccionada}) indica que probablemente:
+- No identificaste correctamente el concepto central
+- Confundiste procedimientos o fórmulas
+- No aplicaste la estrategia adecuada
+
+### ✅ Método correcto:
+            """
+            
+            # Agregar estrategias específicas por área
+            if 'Álgebra' in area_icfes:
+                explanation_content += """
+1. **Identifica las variables** y lo que representan
+2. **Aplica las propiedades algebraicas** correctas
+3. **Simplifica paso a paso** sin saltar operaciones
+4. **Verifica** tu resultado sustituyendo valores
+                """
+            elif 'Geometría' in area_icfes:
+                explanation_content += """
+1. **Dibuja o visualiza** la figura si es posible
+2. **Identifica las medidas conocidas** y desconocidas
+3. **Selecciona la fórmula apropiada** para el problema
+4. **Calcula con cuidado** y verifica unidades
+                """
+            else:
+                explanation_content += """
+1. **Lee cuidadosamente** y identifica qué se pregunta
+2. **Organiza la información** disponible
+3. **Aplica el método** o fórmula correcta
+4. **Verifica** que tu respuesta tenga sentido
+                """
+            
+            explanation_content += """
+### 🎯 Concepto clave:
+Recuerda que en este tipo de problemas es fundamental entender la relación entre los elementos dados y aplicar correctamente los procedimientos matemáticos.
+            """.strip()
+        
+        elif level == 3:
+            # Nivel 3: Explicación completa y detallada
+            explanation_content = f"""
+## 🔬 Análisis Completo y Detallado
+
+**Pregunta completa:** {pregunta.pregunta_texto}
+
+### 📊 Contexto del problema:
+- **Área:** {area_icfes}
+- **Dificultad:** {pregunta.nivel_dificultad}
+- **Tipo de razonamiento:** Aplicación de conceptos matemáticos
+
+### ❌ Análisis de tu error (Opción {user_response.opcion_seleccionada}):
+Tu respuesta sugiere un error conceptual específico. Probablemente:
+- Aplicaste un procedimiento incorrecto para este tipo de problema
+- Confundiste conceptos relacionados pero diferentes
+- No consideraste todas las condiciones del problema
+
+### ✅ Solución paso a paso:
+            """
+            
+            # Agregar solución detallada por área
+            if 'Álgebra' in area_icfes:
+                explanation_content += """
+**Paso 1:** Identifica las variables y constantes
+- ¿Qué representa cada letra o símbolo?
+- ¿Cuáles son los datos conocidos?
+
+**Paso 2:** Establece las relaciones matemáticas
+- ¿Qué operaciones necesitas realizar?
+- ¿Hay ecuaciones que debes plantear?
+
+**Paso 3:** Resuelve sistemáticamente
+- Aplica propiedades algebraicas
+- Despeja la incógnita paso a paso
+- Mantén el equilibrio en las ecuaciones
+
+**Paso 4:** Verifica tu resultado
+- ¿Tu respuesta tiene sentido en el contexto?
+- ¿Cumple con las condiciones iniciales?
+                """
+            elif 'Geometría' in area_icfes:
+                explanation_content += """
+**Paso 1:** Visualización y comprensión
+- Dibuja o esquematiza la figura
+- Identifica todas las medidas conocidas
+- Marca lo que necesitas encontrar
+
+**Paso 2:** Selección de herramientas
+- ¿Qué teoremas o fórmulas aplican?
+- ¿Necesitas el teorema de Pitágoras, áreas, perímetros?
+
+**Paso 3:** Aplicación correcta
+- Sustituye valores en las fórmulas
+- Realiza cálculos con precisión
+- Mantén las unidades correctas
+
+**Paso 4:** Validación
+- ¿El resultado es geométricamente posible?
+- ¿Las proporciones tienen sentido?
+                """
+            else:
+                explanation_content += """
+**Paso 1:** Comprensión profunda del problema
+- Lee el problema varias veces
+- Identifica exactamente qué se pregunta
+- Distingue entre datos e incógnitas
+
+**Paso 2:** Estrategia de solución
+- ¿Qué conceptos matemáticos necesitas?
+- ¿Hay un patrón o método específico?
+- ¿Puedes relacionarlo con problemas similares?
+
+**Paso 3:** Ejecución cuidadosa
+- Aplica los procedimientos correctos
+- No te saltes pasos intermedios
+- Mantén la precisión en los cálculos
+
+**Paso 4:** Reflexión final
+- ¿Tu respuesta es razonable?
+- ¿Responde exactamente lo que se pregunta?
+                """
+            
+            explanation_content += f"""
+### 🎯 La respuesta correcta es {pregunta.respuesta_correcta} porque:
+Aplicando correctamente el método descrito, llegamos a esta opción que satisface todas las condiciones del problema y es matemáticamente consistente.
+
+### 📈 Para dominar este tipo de problemas:
+1. **Practica regularmente** problemas similares de {area_icfes}
+2. **Revisa la teoría** fundamental del tema
+3. **Identifica patrones** en los tipos de preguntas
+4. **No memorices**, comprende los conceptos
+5. **Verifica siempre** tus respuestas
+
+### 🔄 Ejercicios recomendados:
+- Busca problemas similares en libros de matemáticas
+- Practica con diferentes variaciones del mismo concepto
+- Trabaja en tu velocidad sin sacrificar precisión
+            """.strip()
+        
+        return {
+            'content': explanation_content,
+            'model_used': f'fallback_progressive_level_{level}',
+            'confidence': 0.8,
+            'success': True,
+            'level': level
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generando explicación progresiva nivel {level}: {e}")
+        return {
+            'content': f"""
+## ❌ Respuesta Incorrecta
+
+**Respuesta correcta:** Opción {pregunta.respuesta_correcta}
+
+Te recomendamos revisar los conceptos de {area_icfes if 'area_icfes' in locals() else 'matemáticas'} y practicar problemas similares.
+
+*Sistema de explicaciones en desarrollo - Nivel {level}*
+            """.strip(),
+            'model_used': f'emergency_fallback_level_{level}',
+            'confidence': 0.5,
+            'success': True,
+            'level': level
+        } 

@@ -92,6 +92,11 @@ export default function MathDungeonPage() {
   const [userLevel, setUserLevel] = useState<number>(1);
   const [sessionTotalXP, setSessionTotalXP] = useState<number>(0);
 
+  // 🧠 NUEVO: Estados para feedback progresivo
+  const [showProgressiveFeedback, setShowProgressiveFeedback] = useState(false);
+  const [progressiveFeedbackData, setProgressiveFeedbackData] = useState<any>(null);
+  const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
+
   const dungeon = params.dungeon as string;
   const difficultyLevel = DUNGEON_TO_DIFFICULTY[dungeon as keyof typeof DUNGEON_TO_DIFFICULTY] || 'PRINCIPIANTE';
   const difficultyInfo = DIFFICULTY_LEVELS[difficultyLevel as keyof typeof DIFFICULTY_LEVELS];
@@ -645,13 +650,30 @@ export default function MathDungeonPage() {
       
       if (data.success) {
         setFeedback(data.data);
-        setShowFeedback(true);
         
-        // 🆕 NUEVA FUNCIONALIDAD: Mostrar notificación del plan generado
-        showPlanGenerationMessage();
+        // 🔍 DEBUG: Ver todos los datos recibidos
+        console.log('🔍 Full feedback data received:', data.data);
+        console.log('🔍 Final results:', data.data.final_results);
         
-        // 🤖 ANÁLISIS DEL AI ASSISTANT: Procesar resultados del quiz
-        performPostQuizAnalysis();
+        // 🔍 VERIFICAR SI HAY PREGUNTAS INCORRECTAS PARA FEEDBACK PROGRESIVO
+        const totalQuestions = data.data.final_results?.total_questions || 0;
+        const correctAnswers = data.data.final_results?.correct_answers || 0;
+        const incorrectCount = totalQuestions - correctAnswers;
+        
+        console.log('📊 Quiz Stats - Total:', totalQuestions, 'Correct:', correctAnswers, 'Incorrect:', incorrectCount);
+        
+        if (incorrectCount > 0) {
+          console.log('🔄 Found', incorrectCount, 'incorrect questions, starting progressive feedback');
+          console.log('🚀 About to call startProgressiveFeedback()...');
+          // Iniciar feedback progresivo
+          startProgressiveFeedback();
+        } else {
+          console.log('✅ No incorrect questions found, showing normal feedback');
+          // Mostrar feedback normal si no hay preguntas incorrectas
+          setShowFeedback(true);
+          showPlanGenerationMessage();
+          performPostQuizAnalysis();
+        }
       }
     } catch (error) {
       console.error('Error getting feedback:', error);
@@ -734,6 +756,253 @@ export default function MathDungeonPage() {
         notification.parentNode.removeChild(notification);
       }
     }, 6000);
+  };
+
+  // ===============================================
+  // 🧠 SISTEMA DE FEEDBACK PROGRESIVO
+  // ===============================================
+
+  // Iniciar sesión de feedback progresivo
+  const startProgressiveFeedback = async () => {
+    console.log('🔥 startProgressiveFeedback() CALLED!');
+    
+    if (!currentSession) {
+      console.error('❌ No currentSession available');
+      return;
+    }
+
+    try {
+      console.log('🚀 Starting progressive feedback for session:', currentSession.session_id);
+      
+      const url = `/api/icfes/feedback/start/${currentSession.session_id}/`;
+      console.log('🔗 Calling URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📦 Response data:', data);
+      
+      if (data.success) {
+        console.log('✅ Progressive feedback started successfully:', data.data);
+        setProgressiveFeedbackData(data.data);
+        setShowProgressiveFeedback(true);
+        console.log('🎯 Progressive feedback modal should now be visible!');
+      } else {
+        console.error('❌ Error starting progressive feedback:', data.message);
+        console.log('🔄 Falling back to normal feedback...');
+        // Fallback to normal feedback
+        setShowFeedback(true);
+        showPlanGenerationMessage();
+        performPostQuizAnalysis();
+      }
+    } catch (error) {
+      console.error('❌ Network error starting progressive feedback:', error);
+      console.log('🔄 Falling back to normal feedback...');
+      // Fallback to normal feedback
+      setShowFeedback(true);
+      showPlanGenerationMessage();
+      performPostQuizAnalysis();
+    }
+  };
+
+  // Solicitar más explicación (siguiente nivel)
+  const requestMoreExplanation = async () => {
+    console.log('🔥 requestMoreExplanation() CLICKED!');
+    
+    if (!progressiveFeedbackData) {
+      console.error('❌ No progressiveFeedbackData available for more explanation');
+      return;
+    }
+
+    // 🔥 ARREGLO: Verificar feedback_session_id antes de continuar
+    if (!progressiveFeedbackData.feedback_session_id) {
+      console.error('❌ Missing feedback_session_id in progressiveFeedbackData!');
+      console.log('🔍 Current progressiveFeedbackData:', progressiveFeedbackData);
+      alert('Error: ID de sesión perdido. Cerrando feedback progresivo.');
+      setShowProgressiveFeedback(false);
+      setShowFeedback(true);
+      return;
+    }
+
+    console.log('📚 Current level:', progressiveFeedbackData.feedback.current_level);
+    console.log('📚 Can advance:', progressiveFeedbackData.feedback.can_advance);
+    console.log('📚 Feedback session ID:', progressiveFeedbackData.feedback_session_id);
+    setIsLoadingExplanation(true);
+    
+    try {
+      const response = await fetch(`/api/icfes/feedback/${progressiveFeedbackData.feedback_session_id}/question/${progressiveFeedbackData.question.id}/more/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log('📚 More explanation received:', data.data);
+        setProgressiveFeedbackData(prev => ({
+          ...prev,
+          feedback: {
+            ...prev.feedback,
+            ...data.data
+          }
+        }));
+      } else {
+        console.error('❌ Error requesting more explanation:', data.message);
+        alert('Error al solicitar más explicación: ' + data.message);
+      }
+    } catch (error) {
+      console.error('❌ Network error requesting more explanation:', error);
+      alert('Error de conexión al solicitar más explicación');
+    } finally {
+      setIsLoadingExplanation(false);
+    }
+  };
+
+  // Marcar pregunta como entendida y avanzar
+  const markQuestionUnderstood = async () => {
+    console.log('🔥 markQuestionUnderstood() CLICKED!');
+    
+    if (!progressiveFeedbackData) {
+      console.error('❌ No progressiveFeedbackData available');
+      return;
+    }
+
+    // 🔥 ARREGLO: Verificar feedback_session_id antes de continuar
+    if (!progressiveFeedbackData.feedback_session_id) {
+      console.error('❌ Missing feedback_session_id in progressiveFeedbackData!');
+      console.log('🔍 Current progressiveFeedbackData:', progressiveFeedbackData);
+      alert('Error: ID de sesión perdido. Cerrando feedback progresivo.');
+      setShowProgressiveFeedback(false);
+      setShowFeedback(true);
+      return;
+    }
+
+    console.log('📝 Current feedback data:', progressiveFeedbackData);
+    console.log('📝 Feedback session ID:', progressiveFeedbackData.feedback_session_id);
+    setIsLoadingExplanation(true);
+    
+    try {
+      const response = await fetch(`/api/icfes/feedback/${progressiveFeedbackData.feedback_session_id}/question/${progressiveFeedbackData.question.id}/understood/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        if (data.data.session_completed) {
+          console.log('🎉 Progressive feedback completed!');
+          // Completó todas las preguntas
+          setShowProgressiveFeedback(false);
+          setShowFeedback(true);
+          showPlanGenerationMessage();
+          performPostQuizAnalysis();
+          
+          // Mostrar mensaje de felicitación
+          showCompletionMessage(data.data.total_questions_reviewed);
+        } else {
+          console.log('➡️ Moving to next question:', data.data.question);
+          console.log('🔍 New question feedback_session_id:', data.data.feedback_session_id);
+          
+          // 🔥 ARREGLO: Verificar que el feedback_session_id esté presente
+          if (!data.data.feedback_session_id) {
+            console.error('❌ Missing feedback_session_id in response!');
+            console.log('🔍 Full response data:', data.data);
+            alert('Error: No se recibió el ID de sesión. Cerrando feedback progresivo.');
+            setShowProgressiveFeedback(false);
+            setShowFeedback(true);
+            return;
+          }
+          
+          // Actualizar con la siguiente pregunta
+          setProgressiveFeedbackData(data.data);
+          console.log('✅ Updated progressiveFeedbackData with feedback_session_id:', data.data.feedback_session_id);
+        }
+      } else {
+        console.error('❌ Error marking question as understood:', data.message);
+        alert('Error al marcar pregunta como entendida: ' + data.message);
+      }
+    } catch (error) {
+      console.error('❌ Network error marking question as understood:', error);
+      alert('Error de conexión al marcar pregunta como entendida');
+    } finally {
+      setIsLoadingExplanation(false);
+    }
+  };
+
+  // Mostrar mensaje de completación
+  const showCompletionMessage = (totalQuestions: number) => {
+    const notification = document.createElement('div');
+    notification.innerHTML = `
+      <div style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+        color: white; 
+        padding: 30px 40px; 
+        border-radius: 20px; 
+        box-shadow: 0 20px 60px rgba(16, 185, 129, 0.6);
+        z-index: 1003;
+        font-family: 'Inter', sans-serif;
+        text-align: center;
+        border: 2px solid rgba(52, 211, 153, 0.8);
+        animation: completionPulse 1s ease-out;
+      ">
+        <div style="font-size: 3em; margin-bottom: 15px;">🎉</div>
+        <h2 style="margin: 0 0 15px 0; font-size: 1.8em; font-weight: bold;">
+          ¡Excelente Trabajo!
+        </h2>
+        <p style="margin: 0; font-size: 1.1em; opacity: 0.95;">
+          Has completado la revisión de <strong>${totalQuestions} preguntas</strong>
+        </p>
+        <p style="margin: 10px 0 0 0; font-size: 0.9em; opacity: 0.8;">
+          Ahora comprenderás mejor estos conceptos ✨
+        </p>
+      </div>
+    `;
+    
+    // Agregar animación CSS
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes completionPulse {
+        0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+        100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }
+      if (style.parentNode) {
+        style.parentNode.removeChild(style);
+      }
+    }, 4000);
   };
 
   // 🆕 NUEVA FUNCIÓN: Mostrar mensaje del plan generado
@@ -1670,6 +1939,231 @@ export default function MathDungeonPage() {
         )}
       </div>
         
+      {/* 🧠 Progressive Feedback Modal */}
+      {showProgressiveFeedback && progressiveFeedbackData && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            className="bg-slate-800 rounded-2xl border border-cyan-500/40 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex-shrink-0 bg-gradient-to-r from-cyan-600/20 to-purple-600/20 p-6 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    🧠 Revisión de Preguntas Incorrectas
+                  </h2>
+                  <div className="flex items-center space-x-4 text-sm text-white/70">
+                    <span>
+                      Pregunta {progressiveFeedbackData.current_question_index} de {progressiveFeedbackData.total_questions}
+                    </span>
+                    <div className="flex-1 bg-white/20 rounded-full h-2 max-w-xs">
+                      <div 
+                        className="bg-gradient-to-r from-cyan-400 to-purple-400 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progressiveFeedbackData.progress_percentage}%` }}
+                      />
+                    </div>
+                    <span>{Math.round(progressiveFeedbackData.progress_percentage)}%</span>
+                  </div>
+                </div>
+                
+                {/* Botón de cerrar de emergencia */}
+                <button
+                  onClick={() => {
+                    console.log('❌ EMERGENCY CLOSE BUTTON CLICKED');
+                    setShowProgressiveFeedback(false);
+                    setShowFeedback(true);
+                    showPlanGenerationMessage();
+                    performPostQuizAnalysis();
+                  }}
+                  className="text-white/50 hover:text-white text-2xl leading-none p-2 hover:bg-white/10 rounded"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto">
+              {/* Question Display */}
+              <div className="mb-6">
+                <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+                  <h3 className="text-lg font-semibold text-white mb-3">
+                    📝 Pregunta:
+                  </h3>
+                  <p className="text-white/90 mb-4">
+                    {progressiveFeedbackData.question.text}
+                  </p>
+                  
+                  {progressiveFeedbackData.question.image_url && (
+                    <div className="mb-4">
+                      <img 
+                        src={progressiveFeedbackData.question.image_url}
+                        alt="Pregunta"
+                        className="max-w-full h-auto rounded border border-white/20"
+                        style={{ maxHeight: '300px' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Options */}
+                  <div className="grid gap-2">
+                    {Object.entries(progressiveFeedbackData.question.options).map(([key, value]: [string, any]) => (
+                      <div 
+                        key={key}
+                        className={`p-3 rounded border-2 ${
+                          key === progressiveFeedbackData.correct_answer
+                            ? 'border-green-500 bg-green-500/20'
+                            : key === progressiveFeedbackData.user_answer
+                            ? 'border-red-500 bg-red-500/20'
+                            : 'border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className={`font-bold ${
+                            key === progressiveFeedbackData.correct_answer
+                              ? 'text-green-400'
+                              : key === progressiveFeedbackData.user_answer
+                              ? 'text-red-400'
+                              : 'text-white/70'
+                          }`}>
+                            {key})
+                          </span>
+                          <span className="text-white/90">
+                            {value.text}
+                          </span>
+                          {key === progressiveFeedbackData.correct_answer && (
+                            <span className="text-green-400 text-sm font-semibold">✓ Correcta</span>
+                          )}
+                          {key === progressiveFeedbackData.user_answer && key !== progressiveFeedbackData.correct_answer && (
+                            <span className="text-red-400 text-sm font-semibold">✗ Tu respuesta</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feedback Display */}
+                <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      💡 Explicación (Nivel {progressiveFeedbackData.feedback.current_level})
+                    </h3>
+                    <div className="flex space-x-1">
+                      {[1, 2, 3].map((level) => (
+                        <div
+                          key={level}
+                          className={`w-3 h-3 rounded-full ${
+                            level <= progressiveFeedbackData.feedback.current_level
+                              ? 'bg-cyan-400'
+                              : 'bg-white/20'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="prose prose-invert max-w-none">
+                    <div 
+                      className="text-white/90 leading-relaxed whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ 
+                        __html: progressiveFeedbackData.feedback.explanation?.replace(/\n/g, '<br/>') || ''
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons - SIEMPRE VISIBLE */}
+            <div className="flex-shrink-0 p-6 border-t border-white/10 bg-slate-900/50">
+              {/* 🔍 DEBUG: Mostrar info del feedback */}
+              <div className="mb-4 text-xs text-white/50 bg-slate-800/50 p-2 rounded">
+                <div>Feedback ID: {progressiveFeedbackData?.feedback_session_id}</div>
+                <div>Current Level: {progressiveFeedbackData?.feedback?.current_level}</div>
+                <div>Can Advance: {progressiveFeedbackData?.feedback?.can_advance ? 'SI' : 'NO'}</div>
+                <div>Is Loading: {isLoadingExplanation ? 'SI' : 'NO'}</div>
+              </div>
+              
+              <div className="flex space-x-4">
+                <Button
+                  onClick={() => {
+                    console.log('🟢 GREEN BUTTON CLICKED - ¡Entendí!');
+                    markQuestionUnderstood();
+                  }}
+                  disabled={isLoadingExplanation}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 text-lg font-semibold"
+                >
+                  {isLoadingExplanation ? (
+                    <div className="flex items-center space-x-2">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                      />
+                      <span>Procesando...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <span>✅</span>
+                      <span>¡Entendí! Siguiente pregunta</span>
+                    </div>
+                  )}
+                </Button>
+
+                {progressiveFeedbackData.feedback.can_advance ? (
+                  <Button
+                    onClick={() => {
+                      console.log('🔵 BLUE BUTTON CLICKED - Dame más explicación');
+                      requestMoreExplanation();
+                    }}
+                    disabled={isLoadingExplanation}
+                    variant="outline"
+                    className="flex-1 border-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/20 py-3 text-lg font-semibold bg-transparent"
+                  >
+                    {isLoadingExplanation ? (
+                      <div className="flex items-center space-x-2">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full"
+                        />
+                        <span>Cargando...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <span>📚</span>
+                        <span>Dame más explicación</span>
+                      </div>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex-1 text-center py-3 text-white/60 text-sm border border-white/20 rounded bg-slate-700/50">
+                    <div className="flex items-center justify-center space-x-2">
+                      <span>🏁</span>
+                      <span>Nivel máximo alcanzado</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {!progressiveFeedbackData.feedback.can_advance && (
+                <p className="text-center text-white/60 text-sm mt-3">
+                  Has alcanzado el nivel máximo de explicación para esta pregunta
+                </p>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
       {/* AI Assistant */}
       <AIAssistant
         isVisible={showAIAssistant}
